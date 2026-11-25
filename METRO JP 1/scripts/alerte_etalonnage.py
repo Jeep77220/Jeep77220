@@ -6,6 +6,7 @@ import re
 import shutil
 import unicodedata
 import zipfile
+from urllib.parse import quote
 from datetime import date, timedelta
 from pathlib import Path
 from xml.etree import ElementTree as ET
@@ -255,7 +256,7 @@ def write_xlsx(path, title, header, rows, row_styles, hyperlinks=None, color_fro
             '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
             '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
             + ''.join(
-                f'<Relationship Id="{rid}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink" Target="{escape(target, {chr(34): "&quot;"})}" TargetMode="External"/>'
+                f'<Relationship Id="{rid}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink" Target="{escape(quote(target, safe="/"), {chr(34): "&quot;"})}" TargetMode="External"/>'
                 for rid, _, target in hyperlinks
             )
             + '</Relationships>'
@@ -707,7 +708,7 @@ def main():
             f'Annexe {slug}',
         ])
         row_styles.append(STYLE[it['statut']])
-        hyperlinks.append((f'hlink{i + 1}', f'J{ri}', f'instruments/{slug}/annexe/fiche_suivi.md'))
+        hyperlinks.append((f'hlink{i + 1}', f'J{ri}', f'instruments/{slug}/annexe/'))
     write_xlsx(
         cal,
         f"Calendrier de suivi des dates d'étalonnage et de validité des outillages au sein d'ALCO — alertes de préemption ≤ {args.seuil} jours (généré le {today.isoformat()})",
