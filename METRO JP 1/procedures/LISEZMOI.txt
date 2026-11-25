@@ -1,0 +1,3 @@
+Déposer ici les procédures applicables au suivi métrologique :
+- FO 201 (référencée dans le calendrier des étalonnages) : suivi des dates d'étalonnage et de validité des outillages
+- procédures d'étalonnage internes, critères d'acceptation, gestion des non-conformités, etc.
