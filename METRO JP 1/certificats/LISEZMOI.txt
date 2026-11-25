@@ -1,9 +1,0 @@
-Déposer ici les certificats d'étalonnage (PDF) de tous les instruments ALCO.
-
-Nom conseillé : AAAA-MM-JJ_<instrument>_<n° de certificat>.pdf
-Exemple : 2027-01-07_palmer-atelier_8074960_CERT-2027-011.pdf
-
-À chaque dépôt, reporter le n° de certificat dans :
-- la fiche de suivi de l'instrument (instruments/<instrument>/fiche_suivi.md)
-- le rapport d'étalonnage (instruments/<instrument>/rapport_etalonnage.md)
-- le registre global (registre_suivi_etalonnages.csv)

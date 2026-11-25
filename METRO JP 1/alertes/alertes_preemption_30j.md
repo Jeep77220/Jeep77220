@@ -1,7 +1,7 @@
 # Alertes de préemption — échéances à 30 jours ou moins
 
 Généré le **2026-11-25** — seuil d'alerte : **30 jours** (option `--seuil` du script).
-Source : `Calendrier des étalonnages.xlsx`, script : `scripts/alerte_etalonnage.py`.
+Source : `Calendrier des étalonnages.xlsx` (colonne « Alerte »), script : `scripts/alerte_etalonnage.py`.
 
 ## Résumé
 

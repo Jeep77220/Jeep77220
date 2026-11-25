@@ -1,32 +1,32 @@
 # Index des instruments — fiches de suivi
 
-Généré le 2026-11-25 — seuil d'alerte : 30 jours. Chaque instrument a sa fiche, son rapport et son dossier de documents techniques.
+Généré le 2026-11-25 — seuil d'alerte : 30 jours. Dossiers nommés par n° de série (ou réf. fabricant).
 
-| Instrument | N° série | Date de validité | Jours restants | Statut | Fiche |
+| N° série / réf | Instrument | Date de validité | Jours restants | Statut | Dossier |
 |---|---|---|---|---|---|
-| Palmer (atelier) | 8074960 / 102217 | 2027-01-07 | 43 | **OK** | [fiche_suivi.md](palmer-atelier/fiche_suivi.md) |
-| Pied à Coulisse numérique (atelier) | 7001574 | 2027-01-07 | 43 | **OK** | [fiche_suivi.md](pied-a-coulisse-numerique-atelier/fiche_suivi.md) |
-| Micromètre numérique (atelier) | 120296618 | 2027-01-07 | 43 | **OK** | [fiche_suivi.md](micrometre-numerique-atelier/fiche_suivi.md) |
-| Pied à Coulisse numérique | 161039537 | 2027-01-07 | 43 | **OK** | [fiche_suivi.md](pied-a-coulisse-numerique/fiche_suivi.md) |
-| Jauge de profondeur | 814 | 2027-01-07 | 43 | **OK** | [fiche_suivi.md](jauge-de-profondeur/fiche_suivi.md) |
-| Pied à Coulisse numérique | I-75671 | 2027-01-07 | 43 | **OK** | [fiche_suivi.md](pied-a-coulisse-numerique-2/fiche_suivi.md) |
-| Pied à Coulisse numérique | BB01684 | 2027-01-07 | 43 | **OK** | [fiche_suivi.md](pied-a-coulisse-numerique-3/fiche_suivi.md) |
-| Pied à Coulisse numérique | GX22033852 | 2027-01-07 | 43 | **OK** | [fiche_suivi.md](pied-a-coulisse-numerique-4/fiche_suivi.md) |
-| Pied à Coulisse numérique | P2210310007 | 2027-01-07 | 43 | **OK** | [fiche_suivi.md](pied-a-coulisse-numerique-5/fiche_suivi.md) |
-| Mètre Ruban (atelier) | N/A | 2027-01-31 | 67 | **OK** | [fiche_suivi.md](metre-ruban-atelier/fiche_suivi.md) |
-| Mètre Ruban (atelier) | 33-728 | 2027-01-31 | 67 | **OK** | [fiche_suivi.md](metre-ruban-atelier-2/fiche_suivi.md) |
-| Mètre Ruban (atelier) | 33-194 | 2027-01-31 | 67 | **OK** | [fiche_suivi.md](metre-ruban-atelier-3/fiche_suivi.md) |
-| Mètre laser (atelier) | 224427088 | 2027-01-31 | 67 | **OK** | [fiche_suivi.md](metre-laser-atelier/fiche_suivi.md) |
-| Cales étalons | 61138 | 2027-03-09 | 104 | **OK** | [fiche_suivi.md](cales-etalons/fiche_suivi.md) |
-| Cales étalons pour rugosiomètre (RT10) | 2817 | 2027-03-09 | 104 | **OK** | [fiche_suivi.md](cales-etalons-pour-rugosiometre-rt10/fiche_suivi.md) |
-| Perméabilité magnétique | 657.2014 | 2027-05-12 | 168 | **OK** | [fiche_suivi.md](permeabilite-magnetique/fiche_suivi.md) |
-| Pied à coulisse 1000mm (bureau AQ) | 21 | 2027-05-31 | 187 | **OK** | [fiche_suivi.md](pied-a-coulisse-1000mm-bureau-aq/fiche_suivi.md) |
-| Mètre Ruban (atelier) | N/A | 2027-06-04 | 191 | **OK** | [fiche_suivi.md](metre-ruban-atelier-4/fiche_suivi.md) |
-| Mètre Ruban (atelier) | N/A | 2027-06-26 | 213 | **OK** | [fiche_suivi.md](metre-ruban-atelier-5/fiche_suivi.md) |
-| Rugosimètre (bureau AQ) | 93 | 2028-03-31 | 492 | **OK** | [fiche_suivi.md](rugosimetre-bureau-aq/fiche_suivi.md) |
-| Thermohygromètre | 2307129 | 2029-11-06 | 1077 | **OK** | [fiche_suivi.md](thermohygrometre/fiche_suivi.md) |
-| Mesureur de dureté  (bureau AQ) | E14060023 | 2029-11-10 | 1081 | **OK** | [fiche_suivi.md](mesureur-de-durete-bureau-aq/fiche_suivi.md) |
-| Mesureur d'épaisseur US (bureau AQ) | 163214 | 2030-03-31 | 1222 | **OK** | [fiche_suivi.md](mesureur-d-epaisseur-us-bureau-aq/fiche_suivi.md) |
-| Thermomètre | IR2000281-IR2000300 | 2030-11-24 | 1460 | **OK** | [fiche_suivi.md](thermometre/fiche_suivi.md) |
-| Luxmètre (bureau AQ) | 211222692 | 2030-11-30 | 1466 | **OK** | [fiche_suivi.md](luxmetre-bureau-aq/fiche_suivi.md) |
-| Mètre Etalon (bureau AQ) | N/A | 2033-09-30 | 2501 | **OK** | [fiche_suivi.md](metre-etalon-bureau-aq/fiche_suivi.md) |
+| 8074960 / 102217 | Palmer (atelier) | 2027-01-07 | 43 | **OK** | [instruments/8074960-102217/](8074960-102217/) |
+| 7001574 | Pied à Coulisse numérique (atelier) | 2027-01-07 | 43 | **OK** | [instruments/7001574/](7001574/) |
+| 120296618 | Micromètre numérique (atelier) | 2027-01-07 | 43 | **OK** | [instruments/120296618/](120296618/) |
+| 161039537 | Pied à Coulisse numérique | 2027-01-07 | 43 | **OK** | [instruments/161039537/](161039537/) |
+| 814 | Jauge de profondeur | 2027-01-07 | 43 | **OK** | [instruments/814/](814/) |
+| I-75671 | Pied à Coulisse numérique | 2027-01-07 | 43 | **OK** | [instruments/I-75671/](I-75671/) |
+| BB01684 | Pied à Coulisse numérique | 2027-01-07 | 43 | **OK** | [instruments/BB01684/](BB01684/) |
+| GX22033852 | Pied à Coulisse numérique | 2027-01-07 | 43 | **OK** | [instruments/GX22033852/](GX22033852/) |
+| P2210310007 | Pied à Coulisse numérique | 2027-01-07 | 43 | **OK** | [instruments/P2210310007/](P2210310007/) |
+| M1 | Mètre Ruban (atelier) | 2027-01-31 | 67 | **OK** | [instruments/M1/](M1/) |
+| 33-728 | Mètre Ruban (atelier) | 2027-01-31 | 67 | **OK** | [instruments/33-728/](33-728/) |
+| 33-194 | Mètre Ruban (atelier) | 2027-01-31 | 67 | **OK** | [instruments/33-194/](33-194/) |
+| 224427088 | Mètre laser (atelier) | 2027-01-31 | 67 | **OK** | [instruments/224427088/](224427088/) |
+| 61138 | Cales étalons | 2027-03-09 | 104 | **OK** | [instruments/61138/](61138/) |
+| 2817 | Cales étalons pour rugosiomètre (RT10) | 2027-03-09 | 104 | **OK** | [instruments/2817/](2817/) |
+| 657.2014 | Perméabilité magnétique | 2027-05-12 | 168 | **OK** | [instruments/657.2014/](657.2014/) |
+| 21 | Pied à coulisse 1000mm (bureau AQ) | 2027-05-31 | 187 | **OK** | [instruments/21/](21/) |
+| M5 8 mètres | Mètre Ruban (atelier) | 2027-06-04 | 191 | **OK** | [instruments/M5-8-mètres/](M5-8-mètres/) |
+| M6 10 mètres | Mètre Ruban (atelier) | 2027-06-26 | 213 | **OK** | [instruments/M6-10-mètres/](M6-10-mètres/) |
+| 93 | Rugosimètre (bureau AQ) | 2028-03-31 | 492 | **OK** | [instruments/93/](93/) |
+| 2307129 | Thermohygromètre | 2029-11-06 | 1077 | **OK** | [instruments/2307129/](2307129/) |
+| E14060023 | Mesureur de dureté  (bureau AQ) | 2029-11-10 | 1081 | **OK** | [instruments/E14060023/](E14060023/) |
+| 163214 | Mesureur d'épaisseur US (bureau AQ) | 2030-03-31 | 1222 | **OK** | [instruments/163214/](163214/) |
+| IR2000281-IR2000300 | Thermomètre | 2030-11-24 | 1460 | **OK** | [instruments/IR2000281-IR2000300/](IR2000281-IR2000300/) |
+| 211222692 | Luxmètre (bureau AQ) | 2030-11-30 | 1466 | **OK** | [instruments/211222692/](211222692/) |
+| E1 | Mètre Etalon (bureau AQ) | 2033-09-30 | 2501 | **OK** | [instruments/E1/](E1/) |

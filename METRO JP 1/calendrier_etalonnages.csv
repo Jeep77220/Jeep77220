@@ -1,27 +1,27 @@
-﻿designation;fabricant;reference_fabricant;numero_serie;periodicite;dernier_etalonnage;date_validite;jours_restants;statut;detail;fiche_suivi
-Thermomètre;Tempmate;IR20;IR2000281-IR2000300;60 mois;2025-11-24;2030-11-24;1460;OK;préemption dans 1460 j;instruments/thermometre/fiche_suivi.md
-Palmer (atelier);Mitutoyo;8074960;8074960 / 102217;12 mois;2026-01-07;2027-01-07;43;OK;préemption dans 43 j;instruments/palmer-atelier/fiche_suivi.md
-Pied à Coulisse numérique (atelier);Mitutoyo digimatic;N/A;7001574;12 mois;2026-01-07;2027-01-07;43;OK;préemption dans 43 j;instruments/pied-a-coulisse-numerique-atelier/fiche_suivi.md
-Mesureur d'épaisseur US (bureau AQ);Positector;N/A;163214;48 mois;2026-03-20;2030-03-31;1222;OK;préemption dans 1222 j;instruments/mesureur-d-epaisseur-us-bureau-aq/fiche_suivi.md
-Rugosimètre (bureau AQ);S.M.;RT.10;93;24 mois;2026-03-20;2028-03-31;492;OK;préemption dans 492 j;instruments/rugosimetre-bureau-aq/fiche_suivi.md
-Micromètre numérique (atelier);Filetta;IP54;120296618;12 mois;2026-01-07;2027-01-07;43;OK;préemption dans 43 j;instruments/micrometre-numerique-atelier/fiche_suivi.md
-Pied à coulisse 1000mm (bureau AQ);N/A;N/A;21;24 mois;2025-05-15;2027-05-31;187;OK;préemption dans 187 j;instruments/pied-a-coulisse-1000mm-bureau-aq/fiche_suivi.md
-Mesureur de dureté  (bureau AQ);SADT;HARTIP 3000;E14060023;36 mois;2026-11-10;2029-11-10;1081;OK;préemption dans 1081 j;instruments/mesureur-de-durete-bureau-aq/fiche_suivi.md
-Luxmètre (bureau AQ);TROTEC;BF06;211222692;60 mois;2025-11-03;2030-11-30;1466;OK;préemption dans 1466 j;instruments/luxmetre-bureau-aq/fiche_suivi.md
-Perméabilité magnétique;Stefan Mayer;ferromaster;657.2014;48 mois;2023-05-12;2027-05-12;168;OK;préemption dans 168 j;instruments/permeabilite-magnetique/fiche_suivi.md
-Mètre Ruban (atelier);Stanley;M1;N/A;12 mois;2024-01-02;2027-01-31;67;OK;préemption dans 67 j;instruments/metre-ruban-atelier/fiche_suivi.md
-Mètre Ruban (atelier);Stanley;M2;33-728;12 mois;2024-01-02;2027-01-31;67;OK;préemption dans 67 j;instruments/metre-ruban-atelier-2/fiche_suivi.md
-Mètre Ruban (atelier);Stanley;M3;33-194;12 mois;2024-01-02;2027-01-31;67;OK;préemption dans 67 j;instruments/metre-ruban-atelier-3/fiche_suivi.md
-Mètre Ruban (atelier);Erbauer;M5 8 mètres;N/A;12 mois;2026-06-04;2027-06-04;191;OK;préemption dans 191 j;instruments/metre-ruban-atelier-4/fiche_suivi.md
-Mètre Ruban (atelier);Erbauer;M6 10 mètres;N/A;12 mois;2026-06-26;2027-06-26;213;OK;préemption dans 213 j;instruments/metre-ruban-atelier-5/fiche_suivi.md
-Mètre laser (atelier);Bosch;L1;224427088;12 mois;2024-01-02;2027-01-31;67;OK;préemption dans 67 j;instruments/metre-laser-atelier/fiche_suivi.md
-Mètre Etalon (bureau AQ);Facom;E1;N/A;120 mois;2023-09-30;2033-09-30;2501;OK;préemption dans 2501 j;instruments/metre-etalon-bureau-aq/fiche_suivi.md
-Pied à Coulisse numérique;ASIMETO;N/A;161039537;12 mois;2026-01-07;2027-01-07;43;OK;préemption dans 43 j;instruments/pied-a-coulisse-numerique/fiche_suivi.md
-Jauge de profondeur;METLAND;N/A;814;12 mois;2026-01-07;2027-01-07;43;OK;préemption dans 43 j;instruments/jauge-de-profondeur/fiche_suivi.md
-Pied à Coulisse numérique;Stainless Hardened;N/A;I-75671;12 mois;2026-01-07;2027-01-07;43;OK;préemption dans 43 j;instruments/pied-a-coulisse-numerique-2/fiche_suivi.md
-Pied à Coulisse numérique;WURTH;N/A;BB01684;12 mois;2026-01-07;2027-01-07;43;OK;préemption dans 43 j;instruments/pied-a-coulisse-numerique-3/fiche_suivi.md
-Pied à Coulisse numérique;BLET;PCDXX-D0015C01;GX22033852;12 mois;2026-01-07;2027-01-07;43;OK;préemption dans 43 j;instruments/pied-a-coulisse-numerique-4/fiche_suivi.md
-Pied à Coulisse numérique;BLET;PCDXX-D0050C01;P2210310007;12 mois;2026-01-07;2027-01-07;43;OK;préemption dans 43 j;instruments/pied-a-coulisse-numerique-5/fiche_suivi.md
-Thermohygromètre;TROTEC;TC100;2307129;60 mois;2024-11-06;2029-11-06;1077;OK;préemption dans 1077 j;instruments/thermohygrometre/fiche_suivi.md
-Cales étalons;INSIZE;N/A;61138;60 mois;2022-03-09;2027-03-09;104;OK;préemption dans 104 j;instruments/cales-etalons/fiche_suivi.md
-Cales étalons pour rugosiomètre (RT10);Mitutoyo;N/A;2817;60 mois;2022-03-07;2027-03-09;104;OK;préemption dans 104 j;instruments/cales-etalons-pour-rugosiometre-rt10/fiche_suivi.md
+﻿designation;fabricant;reference_fabricant;numero_serie;periodicite;dernier_etalonnage;date_validite;jours_restants;statut;detail;dossier_instrument
+Thermomètre;Tempmate;IR20;IR2000281-IR2000300;60 mois;2025-11-24;2030-11-24;1460;OK;préemption dans 1460 j;instruments/IR2000281-IR2000300/
+Palmer (atelier);Mitutoyo;8074960;8074960 / 102217;12 mois;2026-01-07;2027-01-07;43;OK;préemption dans 43 j;instruments/8074960-102217/
+Pied à Coulisse numérique (atelier);Mitutoyo digimatic;N/A;7001574;12 mois;2026-01-07;2027-01-07;43;OK;préemption dans 43 j;instruments/7001574/
+Mesureur d'épaisseur US (bureau AQ);Positector;N/A;163214;48 mois;2026-03-20;2030-03-31;1222;OK;préemption dans 1222 j;instruments/163214/
+Rugosimètre (bureau AQ);S.M.;RT.10;93;24 mois;2026-03-20;2028-03-31;492;OK;préemption dans 492 j;instruments/93/
+Micromètre numérique (atelier);Filetta;IP54;120296618;12 mois;2026-01-07;2027-01-07;43;OK;préemption dans 43 j;instruments/120296618/
+Pied à coulisse 1000mm (bureau AQ);N/A;N/A;21;24 mois;2025-05-15;2027-05-31;187;OK;préemption dans 187 j;instruments/21/
+Mesureur de dureté  (bureau AQ);SADT;HARTIP 3000;E14060023;36 mois;2026-11-10;2029-11-10;1081;OK;préemption dans 1081 j;instruments/E14060023/
+Luxmètre (bureau AQ);TROTEC;BF06;211222692;60 mois;2025-11-03;2030-11-30;1466;OK;préemption dans 1466 j;instruments/211222692/
+Perméabilité magnétique;Stefan Mayer;ferromaster;657.2014;48 mois;2023-05-12;2027-05-12;168;OK;préemption dans 168 j;instruments/657.2014/
+Mètre Ruban (atelier);Stanley;M1;N/A;12 mois;2024-01-02;2027-01-31;67;OK;préemption dans 67 j;instruments/M1/
+Mètre Ruban (atelier);Stanley;M2;33-728;12 mois;2024-01-02;2027-01-31;67;OK;préemption dans 67 j;instruments/33-728/
+Mètre Ruban (atelier);Stanley;M3;33-194;12 mois;2024-01-02;2027-01-31;67;OK;préemption dans 67 j;instruments/33-194/
+Mètre Ruban (atelier);Erbauer;M5 8 mètres;N/A;12 mois;2026-06-04;2027-06-04;191;OK;préemption dans 191 j;instruments/M5-8-mètres/
+Mètre Ruban (atelier);Erbauer;M6 10 mètres;N/A;12 mois;2026-06-26;2027-06-26;213;OK;préemption dans 213 j;instruments/M6-10-mètres/
+Mètre laser (atelier);Bosch;L1;224427088;12 mois;2024-01-02;2027-01-31;67;OK;préemption dans 67 j;instruments/224427088/
+Mètre Etalon (bureau AQ);Facom;E1;N/A;120 mois;2023-09-30;2033-09-30;2501;OK;préemption dans 2501 j;instruments/E1/
+Pied à Coulisse numérique;ASIMETO;N/A;161039537;12 mois;2026-01-07;2027-01-07;43;OK;préemption dans 43 j;instruments/161039537/
+Jauge de profondeur;METLAND;N/A;814;12 mois;2026-01-07;2027-01-07;43;OK;préemption dans 43 j;instruments/814/
+Pied à Coulisse numérique;Stainless Hardened;N/A;I-75671;12 mois;2026-01-07;2027-01-07;43;OK;préemption dans 43 j;instruments/I-75671/
+Pied à Coulisse numérique;WURTH;N/A;BB01684;12 mois;2026-01-07;2027-01-07;43;OK;préemption dans 43 j;instruments/BB01684/
+Pied à Coulisse numérique;BLET;PCDXX-D0015C01;GX22033852;12 mois;2026-01-07;2027-01-07;43;OK;préemption dans 43 j;instruments/GX22033852/
+Pied à Coulisse numérique;BLET;PCDXX-D0050C01;P2210310007;12 mois;2026-01-07;2027-01-07;43;OK;préemption dans 43 j;instruments/P2210310007/
+Thermohygromètre;TROTEC;TC100;2307129;60 mois;2024-11-06;2029-11-06;1077;OK;préemption dans 1077 j;instruments/2307129/
+Cales étalons;INSIZE;N/A;61138;60 mois;2022-03-09;2027-03-09;104;OK;préemption dans 104 j;instruments/61138/
+Cales étalons pour rugosiomètre (RT10);Mitutoyo;N/A;2817;60 mois;2022-03-07;2027-03-09;104;OK;préemption dans 104 j;instruments/2817/

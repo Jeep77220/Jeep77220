@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import csv
+import os
 import re
 import shutil
 import unicodedata
@@ -45,6 +46,13 @@ def parse_date(raw):
         return None, ''
     if re.fullmatch(r'\d+(\.\d+)?', s):
         return date(1899, 12, 30) + timedelta(days=int(float(s))), s
+    m = re.fullmatch(r'(\d{4})-(\d{1,2})-(\d{1,2})', s)
+    if m:
+        y, mo, d = map(int, m.groups())
+        try:
+            return date(y, mo, d), s
+        except ValueError:
+            return None, s
     m = re.fullmatch(r'(\d{1,2})/(\d{1,2})/(\d{4})', s)
     if m:
         d, mo, y = map(int, m.groups())
@@ -122,6 +130,19 @@ def slugify(s):
     return s or 'instrument'
 
 
+def folder_name(s):
+    s = unicodedata.normalize('NFKC', s)
+    s = re.sub(r'[\\/:*?"<>|\s]+', '-', s).strip('-')
+    return s or 'instrument'
+
+
+def ident_of(it):
+    for cand in (it['serie'], it['ref']):
+        if cand and cand.upper() != 'N/A':
+            return folder_name(cand)
+    return slugify(it['designation'])
+
+
 def statut(jours, seuil):
     if jours is None:
         return 'INDÉTERMINÉ', 'date de validité illisible'
@@ -190,8 +211,9 @@ STYLES_XML = (
 STYLE = {'DÉPASSÉ': 2, 'ALERTE': 3, 'OK': 4, 'INDÉTERMINÉ': 0}
 
 
-def write_xlsx(path, title, header, rows, row_styles, hyperlinks=None):
+def write_xlsx(path, title, header, rows, row_styles, hyperlinks=None, color_from=6):
     hyperlinks = hyperlinks or []
+
     def row_xml(r, values, styles):
         cells = ''.join(
             xcell(f'{col_letter(ci)}{r}', v, s=styles[ci])
@@ -204,7 +226,7 @@ def write_xlsx(path, title, header, rows, row_styles, hyperlinks=None):
     last_data = len(rows[0]) - (1 if hyperlinks else 0) if rows else 0
     for i, (values, st) in enumerate(zip(rows, row_styles), start=3):
         styles = [0] * len(values)
-        for ci in range(6, last_data):
+        for ci in range(color_from, last_data):
             styles[ci] = st
         if hyperlinks:
             styles[-1] = 5
@@ -279,6 +301,7 @@ def auto_block(it, today):
         f'{AUTO_BEGIN}\n'
         '*Section générée automatiquement par `scripts/alerte_etalonnage.py` — ne pas modifier entre les balises.*\n'
         '\n'
+        f"- **Désignation** : {it['designation']}\n"
         f"- **Fabricant** : {it['fabricant']}\n"
         f"- **Référence fabricant** : {it['ref']}\n"
         f"- **Numéro de série** : {it['serie']}\n"
@@ -294,7 +317,7 @@ def auto_block(it, today):
 def fiche_template(it, today):
     dernier = fmt_date(it['dernier'], it['dernier_raw'])
     validite = fmt_date(it['validite'], it['validite_raw'])
-    return f"""# Fiche de suivi — {it['designation']}
+    return f"""# Fiche de suivi — {it['designation']} (n° {it['serie'] or it['ref']})
 
 {auto_block(it, today)}
 
@@ -310,6 +333,9 @@ def fiche_template(it, today):
 
 ## Documents techniques et manuels
 - Dossier [`documents_techniques/`](documents_techniques/) : manuels, notices constructeur, fiches techniques, schémas (à déposer ici).
+
+## Certificats
+- Dossier [`certificats/`](certificats/) : certificats d'étalonnage de cet instrument (laboratoire COFRAC ou constructeur).
 
 ## Remarques
 
@@ -333,7 +359,7 @@ def update_fiche(path, it, today):
 
 
 def rapport_template(it):
-    return f"""# Rapport d'étalonnage — {it['designation']}
+    return f"""# Rapport d'étalonnage — {it['designation']} (n° {it['serie'] or it['ref']})
 
 À compléter directement dans ce fichier à chaque étalonnage.
 
@@ -343,7 +369,7 @@ def rapport_template(it):
 - **Date d'étalonnage** :
 - **Prestataire / laboratoire d'étalonnage** :
 - **N° de certificat d'étalonnage** :
-- **Certificat (PDF)** : à déposer dans `../../certificats/`
+- **Certificat (PDF)** : à déposer dans `certificats/`
 - **Date de validité après étalonnage** :
 - **Points de contrôle / résultats obtenus** :
 - **Conformité** : conforme / non conforme
@@ -389,7 +415,7 @@ def write_report(path, items, today, seuil):
     out.append(f'# Alertes de préemption — échéances à {seuil} jours ou moins')
     out.append('')
     out.append(f'Généré le **{today.isoformat()}** — seuil d\'alerte : **{seuil} jours** (option `--seuil` du script).')
-    out.append('Source : `Calendrier des étalonnages.xlsx`, script : `scripts/alerte_etalonnage.py`.')
+    out.append('Source : `Calendrier des étalonnages.xlsx` (colonne « Alerte »), script : `scripts/alerte_etalonnage.py`.')
     out.append('')
     out.append('## Résumé')
     out.append('')
@@ -424,17 +450,18 @@ def write_instruments_index(path, items, slugs, today, seuil):
     out = []
     out.append('# Index des instruments — fiches de suivi')
     out.append('')
-    out.append(f'Généré le {today.isoformat()} — seuil d\'alerte : {seuil} jours. Chaque instrument a sa fiche, son rapport et son dossier de documents techniques.')
+    out.append(f'Généré le {today.isoformat()} — seuil d\'alerte : {seuil} jours. Dossiers nommés par n° de série (ou réf. fabricant).')
     out.append('')
-    out.append('| Instrument | N° série | Date de validité | Jours restants | Statut | Fiche |')
+    out.append('| N° série / réf | Instrument | Date de validité | Jours restants | Statut | Dossier |')
     out.append('|---|---|---|---|---|---|')
     ordered = sorted(items, key=lambda it: (it['validite'] is None, it['validite'] or date.max))
     for it in ordered:
         slug = slugs[id(it)]
         jours = '—' if it['jours'] is None else str(it['jours'])
+        ident = it['serie'] if it['serie'] and it['serie'].upper() != 'N/A' else it['ref']
         out.append(
-            f"| {it['designation']} | {it['serie']} | {fmt_date(it['validite'], it['validite_raw'])} | "
-            f"{jours} | **{it['statut']}** | [fiche_suivi.md]({slug}/fiche_suivi.md) |"
+            f"| {ident} | {it['designation']} | {fmt_date(it['validite'], it['validite_raw'])} | "
+            f"{jours} | **{it['statut']}** | [instruments/{slug}/]({slug}/) |"
         )
     out.append('')
     current = set(slugs.values())
@@ -451,58 +478,157 @@ def write_instruments_index(path, items, slugs, today, seuil):
     path.write_text('\n'.join(out), encoding='utf-8')
 
 
-def build_annexes(dossier):
+def migrate_folders(instruments_dir, items, old_names, new_names):
+    mapping = {}
+    for old, new in zip(old_names, new_names):
+        mapping[old] = new
+        src = instruments_dir / old
+        dst = instruments_dir / new
+        if src.exists() and not dst.exists():
+            os.rename(src, dst)
+    return mapping
+
+
+def relocate_certificats(dossier, items, slugs):
+    cert_dir = dossier / 'certificats'
+    if not cert_dir.exists():
+        return
+    registre = dossier / 'registre_suivi_etalonnages.csv'
+    reg_text = registre.read_text(encoding='utf-8-sig') if registre.exists() else ''
+    for cert in sorted(cert_dir.glob('*.pdf')):
+        targets = []
+        for it in items:
+            s = it['serie']
+            if s and s.upper() != 'N/A' and re.search(r'(?<![0-9A-Za-z])' + re.escape(s) + r'(?![0-9A-Za-z])', cert.name):
+                targets.append(slugs[id(it)])
+        if not targets:
+            token = cert.name.split('_')[1] if '_' in cert.name else ''
+            for it in items:
+                des = slugify(it['designation'])
+                if token and (token in des or des in token):
+                    targets.append(slugs[id(it)])
+        if not targets:
+            targets = [slugs[id(items[0])]]
+        for slug in dict.fromkeys(targets):
+            cdir = dossier / 'instruments' / slug / 'certificats'
+            cdir.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(cert, cdir / cert.name)
+        if reg_text:
+            reg_text = reg_text.replace(f'certificats/{cert.name}', f'instruments/{targets[0]}/certificats/{cert.name}')
+        cert.unlink()
+    if reg_text and registre.exists():
+        registre.write_text(reg_text, encoding='utf-8-sig')
+    lisezmoi = cert_dir / 'LISEZMOI.txt'
+    if lisezmoi.exists():
+        lisezmoi.unlink()
+    try:
+        cert_dir.rmdir()
+    except OSError:
+        pass
+
+
+def rewrite_paths(dossier, mapping):
+    registre = dossier / 'registre_suivi_etalonnages.csv'
+    if registre.exists():
+        text = registre.read_text(encoding='utf-8-sig')
+        for old, new in mapping.items():
+            text = text.replace(f'instruments/{old}/', f'instruments/{new}/')
+        registre.write_text(text, encoding='utf-8-sig')
     instruments = dossier / 'instruments'
-    certificats = dossier / 'certificats'
-    cert_files = sorted(certificats.glob('*.pdf')) if certificats.exists() else []
+    if instruments.exists():
+        for md in instruments.rglob('*.md'):
+            text = md.read_text(encoding='utf-8')
+            new_text = text.replace('](<../../certificats/', '](<certificats/').replace('`../../certificats/`', '`certificats/`')
+            for old, new in mapping.items():
+                new_text = new_text.replace(f'instruments/{old}/', f'instruments/{new}/')
+            if new_text != text:
+                md.write_text(new_text, encoding='utf-8')
+
+
+def build_annexes(dossier, slugs):
+    instruments = dossier / 'instruments'
     index = [
         '# Annexes audit — une annexe par instrument',
         '',
-        "Chaque dossier `instruments/<instrument>/annexe/` regroupe tout ce qui concerne l'instrument pour un audit :",
-        'fiche de suivi, rapport d\'étalonnage, relevés FO 202 / FO 317, documents techniques (manuels) et certificats.',
+        "Chaque dossier `instruments/<N° de série>/annexe/` regroupe tout ce qui concerne l'instrument pour un audit :",
+        "fiche de suivi, rapport d'étalonnage, relevés FO 202 / FO 317, documents techniques (manuels) et certificats.",
         '',
         'Régénéré automatiquement par `scripts/alerte_etalonnage.py` (copies à jour des fichiers vivants).',
         '',
-        '| Instrument | Annexe |',
-        '|---|---|',
+        '| N° série / réf | Instrument | Annexe |',
+        '|---|---|---|',
     ]
     for idir in sorted(p for p in instruments.iterdir() if p.is_dir() and (p / 'fiche_suivi.md').exists()):
         slug = idir.name
         annexe = idir / 'annexe'
         if annexe.exists():
             shutil.rmtree(annexe)
-        (annexe / 'documents_techniques').mkdir(parents=True)
-        (annexe / 'certificats').mkdir()
-        shutil.copy2(idir / 'fiche_suivi.md', annexe / 'fiche_suivi.md')
+        d01 = annexe / '01 - Fiche de suivi FO 202'
+        d02 = annexe / '02 - Relevés étalonnage FO 317 et certificats laboratoire'
+        d03 = annexe / '03 - Documentation technique de l\'appareil'
+        d01.mkdir(parents=True)
+        (d02 / 'certificats').mkdir(parents=True)
+        d03.mkdir(parents=True)
+        (annexe / '00 - LISEZMOI.txt').write_text(
+            "Annexe audit de l'instrument. Ordre : 01 fiche de suivi FO 202, "
+            "02 relevés d'étalonnage FO 317 / rapports de laboratoire et certificats, "
+            "03 documentation technique (manuels). Copie régénérée automatiquement par scripts/alerte_etalonnage.py.\n",
+            encoding='utf-8',
+        )
+        shutil.copy2(idir / 'fiche_suivi.md', d01 / 'fiche_suivi.md')
+        for pdf in idir.glob('*.pdf'):
+            shutil.copy2(pdf, d01 / pdf.name)
         rapport = idir / 'rapport_etalonnage.md'
         if rapport.exists():
-            shutil.copy2(rapport, annexe / 'rapport_etalonnage.md')
-        for pdf in idir.glob('*.pdf'):
-            shutil.copy2(pdf, annexe / pdf.name)
+            shutil.copy2(rapport, d02 / 'rapport_etalonnage.md')
+        cdir = idir / 'certificats'
+        if cdir.exists():
+            for f in cdir.glob('*.pdf'):
+                shutil.copy2(f, d02 / 'certificats' / f.name)
         dt = idir / 'documents_techniques'
         if dt.exists():
             for f in dt.iterdir():
                 if f.is_file() and f.name != 'LISEZMOI.txt':
-                    shutil.copy2(f, annexe / 'documents_techniques' / f.name)
-        for cert in cert_files:
-            token = cert.name.split('_')[1] if '_' in cert.name else ''
-            if token and (token in slug or slug in token or slug in cert.name):
-                shutil.copy2(cert, annexe / 'certificats' / cert.name)
+                    shutil.copy2(f, d03 / f.name)
         titre = slug
         for line in (idir / 'fiche_suivi.md').read_text(encoding='utf-8').splitlines():
             if line.startswith('# '):
                 titre = line.lstrip('# ').strip()
                 break
-        index.append(f'| {titre} | [annexe/]({slug}/annexe/) |')
+        index.append(f'| {slug} | {titre} | [annexe/]({slug}/annexe/) |')
     index.append('')
     (instruments / 'ANNEXES_AUDIT.md').write_text('\n'.join(index), encoding='utf-8')
 
 
+def write_registre_xlsx(path, csv_path):
+    with csv_path.open(newline='', encoding='utf-8-sig') as f:
+        rows = [r for r in csv.reader(f, delimiter=';') if r]
+    if not rows:
+        return
+    header, data = rows[0], rows[1:]
+    styles = []
+    for r in data:
+        val = (r[8] if len(r) > 8 else '').lower()
+        if 'non conforme' in val:
+            styles.append(2)
+        elif 'restriction' in val:
+            styles.append(3)
+        elif 'conforme' in val:
+            styles.append(4)
+        else:
+            styles.append(0)
+    write_xlsx(
+        path,
+        'Registre global des étalonnages ALCO — vert = conforme, orange = conforme avec restriction, rouge = non conforme (source éditable : registre_suivi_etalonnages.csv)',
+        header, data, styles, color_from=0,
+    )
+
+
 def main():
     ap = argparse.ArgumentParser(
-        description='Calcule les alertes de préemption du calendrier d\'étalonnage ALCO et régénère le dossier de suivi.'
+        description='Met à jour le calendrier unique (alertes de préemption + liens vers les annexes) et régénère le dossier de suivi.'
     )
-    ap.add_argument('--calendrier', default=None, help='Chemin du xlsx source (défaut : Calendrier des étalonnages.xlsx à la racine du dossier)')
+    ap.add_argument('--calendrier', default=None, help='Chemin du xlsx (défaut : Calendrier des étalonnages.xlsx à la racine du dossier)')
     ap.add_argument('--dossier', default=None, help='Racine du dossier de suivi (défaut : dossier parent de scripts/)')
     ap.add_argument('--seuil', type=int, default=30, help='Seuil d\'alerte en jours (défaut : 30)')
     ap.add_argument('--date', default=None, help='Date de référence AAAA-MM-JJ (défaut : aujourd\'hui)')
@@ -519,20 +645,39 @@ def main():
         it['jours'] = (it['validite'] - today).days if it['validite'] else None
         it['statut'], it['detail'] = statut(it['jours'], args.seuil)
 
-    slugs = {}
-    used = set()
+    old_names = []
+    used_old = set()
     for it in items:
         base = slugify(it['designation'])
-        slug = base
+        name = base
         n = 2
-        while slug in used:
-            slug = f'{base}-{n}'
+        while name in used_old:
+            name = f'{base}-{n}'
             n += 1
-        used.add(slug)
-        slugs[id(it)] = slug
+        used_old.add(name)
+        old_names.append(name)
+
+    new_names = []
+    used_new = set()
+    for it in items:
+        base = ident_of(it)
+        name = base
+        n = 2
+        while name in used_new:
+            name = f'{base}-{n}'
+            n += 1
+        used_new.add(name)
+        new_names.append(name)
+
+    slugs = {id(it): new_names[i] for i, it in enumerate(items)}
+
+    instruments_dir = dossier / 'instruments'
+    instruments_dir.mkdir(exist_ok=True)
+    mapping = migrate_folders(instruments_dir, items, old_names, new_names)
+    relocate_certificats(dossier, items, slugs)
+    rewrite_paths(dossier, mapping)
 
     (dossier / 'alertes').mkdir(exist_ok=True)
-    (dossier / 'instruments').mkdir(exist_ok=True)
 
     csv_path = dossier / 'calendrier_etalonnages.csv'
     with csv_path.open('w', newline='', encoding='utf-8-sig') as f:
@@ -540,14 +685,14 @@ def main():
         w.writerow([
             'designation', 'fabricant', 'reference_fabricant', 'numero_serie', 'periodicite',
             'dernier_etalonnage', 'date_validite', 'jours_restants', 'statut', 'detail',
-            'fiche_suivi',
+            'dossier_instrument',
         ])
         for it in items:
             w.writerow([
                 it['designation'], it['fabricant'], it['ref'], it['serie'], it['periodicite'],
                 fmt_date(it['dernier'], it['dernier_raw']), fmt_date(it['validite'], it['validite_raw']),
                 '' if it['jours'] is None else it['jours'], it['statut'], it['detail'],
-                f"instruments/{slugs[id(it)]}/fiche_suivi.md",
+                f"instruments/{slugs[id(it)]}/",
             ])
 
     header = [
@@ -571,21 +716,25 @@ def main():
         row_styles.append(STYLE[it['statut']])
         hyperlinks.append((f'hlink{i + 1}', f'J{ri}', f'instruments/{slug}/annexe/fiche_suivi.md'))
     write_xlsx(
-        dossier / f'Calendrier des étalonnages - ALERTES {args.seuil}j.xlsx',
+        cal,
         f"Calendrier de suivi des dates d'étalonnage et de validité des outillages au sein d'ALCO — alertes de préemption ≤ {args.seuil} jours (généré le {today.isoformat()})",
         header, rows, row_styles, hyperlinks,
     )
+    for legacy in dossier.glob('Calendrier des étalonnages - ALERTES *.xlsx'):
+        legacy.unlink()
 
     write_report(dossier / 'alertes' / f'alertes_preemption_{args.seuil}j.md', items, today, args.seuil)
 
     registre = dossier / 'registre_suivi_etalonnages.csv'
     if not registre.exists():
         registre.write_text(REGISTRE_HEADER + '\n', encoding='utf-8-sig')
+    write_registre_xlsx(dossier / 'registre_suivi_etalonnages.xlsx', registre)
 
     for it in items:
         slug = slugs[id(it)]
-        idir = dossier / 'instruments' / slug
+        idir = instruments_dir / slug
         (idir / 'documents_techniques').mkdir(parents=True, exist_ok=True)
+        (idir / 'certificats').mkdir(exist_ok=True)
         update_fiche(idir / 'fiche_suivi.md', it, today)
         rapport = idir / 'rapport_etalonnage.md'
         if not rapport.exists():
@@ -594,8 +743,8 @@ def main():
         if not lisezmoi.exists():
             lisezmoi.write_text(DOC_TECH_LISEZMOI, encoding='utf-8')
 
-    write_instruments_index(dossier / 'instruments' / 'README.md', items, slugs, today, args.seuil)
-    build_annexes(dossier)
+    write_instruments_index(instruments_dir / 'README.md', items, slugs, today, args.seuil)
+    build_annexes(dossier, slugs)
 
     alerts = [it for it in items if it['statut'] in ('ALERTE', 'DÉPASSÉ')]
     print(f'Dossier : {dossier}')
@@ -603,7 +752,8 @@ def main():
     print('')
     for it in sorted(items, key=lambda x: (x['validite'] is None, x['validite'] or date.max)):
         jours = '—' if it['jours'] is None else it['jours']
-        print(f"[{it['statut']:>12}] {it['designation']:<45} validité {fmt_date(it['validite'], it['validite_raw']):<12} J-{jours}")
+        ident = it['serie'] if it['serie'] and it['serie'].upper() != 'N/A' else it['ref']
+        print(f"[{it['statut']:>12}] {ident:<22} {it['designation']:<40} validité {fmt_date(it['validite'], it['validite_raw']):<12} J-{jours}")
     print('')
     if alerts:
         print(f'ALERTES ({len(alerts)}) :')
@@ -612,8 +762,8 @@ def main():
     else:
         print(f'Aucune alerte à {args.seuil} jours à cette date.')
     print('')
-    print('Fichiers régénérés : calendrier_etalonnages.csv, Calendrier des étalonnages - ALERTES.xlsx,')
-    print(f'alertes/alertes_preemption_{args.seuil}j.md, instruments/*/fiche_suivi.md, instruments/README.md')
+    print('Calendrier unique mis à jour : Calendrier des étalonnages.xlsx (alertes + liens cliquables colonne J)')
+    print(f'Régénérés : calendrier_etalonnages.csv, alertes/alertes_preemption_{args.seuil}j.md, instruments/*/fiche_suivi.md, instruments/README.md, ANNEXES_AUDIT.md, annexes/')
 
 
 if __name__ == '__main__':

@@ -1,0 +1,1 @@
+Annexe audit de l'instrument. Ordre : 01 fiche de suivi FO 202, 02 relevés d'étalonnage FO 317 / rapports de laboratoire et certificats, 03 documentation technique (manuels). Copie régénérée automatiquement par scripts/alerte_etalonnage.py.

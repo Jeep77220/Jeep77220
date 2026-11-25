@@ -19,7 +19,7 @@ Sur la page du dépôt : bouton **« Code »** (vert) en haut à droite → **«
 ## METRO JP 1 — dossier de suivi métrologie complet
 
 Le dossier **`METRO JP 1/`** regroupe tout le suivi métrologie ALCO :
-- `Calendrier des étalonnages - ALERTES 30j.xlsx` — calendrier + colonnes « Jours restants » / « Alerte (préemption ≤ 30 j) », lignes colorées (orange = alerte, rouge = dépassé, vert = OK) ;
+- `Calendrier des étalonnages.xlsx` — **le seul calendrier** : éditable (dates, ajout/suppression de lignes) + colonnes générées « Jours restants » / « Alerte (préemption ≤ 30 j) » (orange = alerte, rouge = dépassé, vert = OK) + colonne cliquable « Fiche / annexe (audit) » vers l'annexe de chaque instrument ;
 - `alertes/alertes_preemption_30j.md` + `calendrier_etalonnages.csv` — rapport et données générés (seuil 30 jours, modifiable) ;
 - `instruments/<instrument>/` — 26 instruments, chacun avec sa `fiche_suivi.md` (historique rempli depuis les FO 202/FO 317), son `rapport_etalonnage.md` et son dossier `documents_techniques/` (manuels déposés) ;
 - `certificats/` — certificats d'étalonnage (INSIZE 2007, BEA A22EE08141C, BEA A26EJ02353, certificat usine TROTEC) ;
