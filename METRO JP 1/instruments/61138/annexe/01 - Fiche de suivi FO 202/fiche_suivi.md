@@ -15,7 +15,7 @@
 <!-- FIN_AUTO -->
 
 ## Historique des étalonnages
-À compléter directement dans ce fichier à chaque étalonnage (journal global : `../../registre_suivi_etalonnages.csv`).
+À compléter directement dans ce fichier à chaque étalonnage (journal global : `../../registre_suivi_etalonnages.xlsx`).
 
 | Date | Prestataire / laboratoire | N° certificat | Certificat (dossier `certificats/`) | Prochaine échéance | Conforme | Remarques |
 |---|---|---|---|---|---|---|

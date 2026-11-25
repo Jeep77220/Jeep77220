@@ -80,7 +80,7 @@ def col_index(ref):
     return c - 1, int(m.group(2)) - 1
 
 
-def read_calendar(path):
+def read_grid(path):
     z = zipfile.ZipFile(path)
     ss = []
     if 'xl/sharedStrings.xml' in z.namelist():
@@ -103,22 +103,28 @@ def read_calendar(path):
         else:
             val = None
         grid.setdefault(ri, {})[ci] = val
-    items = []
+    rows = []
     for ri in sorted(grid):
-        if ri < 2:
-            continue
         row = grid[ri]
-        des = str(row.get(0) or '').strip()
+        rows.append([str(row.get(ci) or '') for ci in range(max(row) + 1)] if row else [])
+    return rows
+
+
+def read_calendar(path):
+    items = []
+    for row in read_grid(path)[2:]:
+        row += [''] * (7 - len(row))
+        des = row[0].strip()
         if not des:
             continue
         items.append({
             'designation': des,
-            'fabricant': str(row.get(1) or '').strip(),
-            'ref': str(row.get(2) or '').strip(),
-            'serie': str(row.get(3) or '').strip(),
-            'periodicite': str(row.get(4) or '').strip(),
-            'dernier_raw': str(row.get(5) or '').strip(),
-            'validite_raw': str(row.get(6) or '').strip(),
+            'fabricant': row[1].strip(),
+            'ref': row[2].strip(),
+            'serie': row[3].strip(),
+            'periodicite': row[4].strip(),
+            'dernier_raw': row[5].strip(),
+            'validite_raw': row[6].strip(),
         })
     return items
 
@@ -322,7 +328,7 @@ def fiche_template(it, today):
 {auto_block(it, today)}
 
 ## Historique des étalonnages
-À compléter directement dans ce fichier à chaque étalonnage (journal global : `../../registre_suivi_etalonnages.csv`).
+À compléter directement dans ce fichier à chaque étalonnage (journal global : `../../registre_suivi_etalonnages.xlsx`).
 
 | Date | Prestataire / laboratoire | N° certificat | Certificat (dossier `certificats/`) | Prochaine échéance | Conforme | Remarques |
 |---|---|---|---|---|---|---|
@@ -539,6 +545,7 @@ def rewrite_paths(dossier, mapping):
         for md in instruments.rglob('*.md'):
             text = md.read_text(encoding='utf-8')
             new_text = text.replace('](<../../certificats/', '](<certificats/').replace('`../../certificats/`', '`certificats/`')
+            new_text = new_text.replace('registre_suivi_etalonnages.csv', 'registre_suivi_etalonnages.xlsx')
             for old, new in mapping.items():
                 new_text = new_text.replace(f'instruments/{old}/', f'instruments/{new}/')
             if new_text != text:
@@ -600,15 +607,17 @@ def build_annexes(dossier, slugs):
     (instruments / 'ANNEXES_AUDIT.md').write_text('\n'.join(index), encoding='utf-8')
 
 
-def write_registre_xlsx(path, csv_path):
-    with csv_path.open(newline='', encoding='utf-8-sig') as f:
-        rows = [r for r in csv.reader(f, delimiter=';') if r]
-    if not rows:
-        return
-    header, data = rows[0], rows[1:]
+REGISTRE_TITRE = 'Registre global des étalonnages ALCO — vert = conforme, orange = conforme avec restriction, rouge = non conforme'
+
+
+def write_registre_xlsx(path):
+    rows = read_grid(path)
+    header = rows[1] if len(rows) > 1 else REGISTRE_HEADER.split(';')
+    data = rows[2:] if len(rows) > 2 else []
     styles = []
     for r in data:
-        val = (r[8] if len(r) > 8 else '').lower()
+        r += [''] * (9 - len(r))
+        val = r[8].lower()
         if 'non conforme' in val:
             styles.append(2)
         elif 'restriction' in val:
@@ -617,11 +626,7 @@ def write_registre_xlsx(path, csv_path):
             styles.append(4)
         else:
             styles.append(0)
-    write_xlsx(
-        path,
-        'Registre global des étalonnages ALCO — vert = conforme, orange = conforme avec restriction, rouge = non conforme (source éditable : registre_suivi_etalonnages.csv)',
-        header, data, styles, color_from=0,
-    )
+    write_xlsx(path, REGISTRE_TITRE, header, data, styles, color_from=0)
 
 
 def main():
@@ -679,21 +684,9 @@ def main():
 
     (dossier / 'alertes').mkdir(exist_ok=True)
 
-    csv_path = dossier / 'calendrier_etalonnages.csv'
-    with csv_path.open('w', newline='', encoding='utf-8-sig') as f:
-        w = csv.writer(f, delimiter=';')
-        w.writerow([
-            'designation', 'fabricant', 'reference_fabricant', 'numero_serie', 'periodicite',
-            'dernier_etalonnage', 'date_validite', 'jours_restants', 'statut', 'detail',
-            'dossier_instrument',
-        ])
-        for it in items:
-            w.writerow([
-                it['designation'], it['fabricant'], it['ref'], it['serie'], it['periodicite'],
-                fmt_date(it['dernier'], it['dernier_raw']), fmt_date(it['validite'], it['validite_raw']),
-                '' if it['jours'] is None else it['jours'], it['statut'], it['detail'],
-                f"instruments/{slugs[id(it)]}/",
-            ])
+    legacy_csv = dossier / 'calendrier_etalonnages.csv'
+    if legacy_csv.exists():
+        legacy_csv.unlink()
 
     header = [
         "Désignation de l'instrument", 'Fabricant', 'Référence fabricant (P/N…)',
@@ -725,10 +718,18 @@ def main():
 
     write_report(dossier / 'alertes' / f'alertes_preemption_{args.seuil}j.md', items, today, args.seuil)
 
-    registre = dossier / 'registre_suivi_etalonnages.csv'
-    if not registre.exists():
-        registre.write_text(REGISTRE_HEADER + '\n', encoding='utf-8-sig')
-    write_registre_xlsx(dossier / 'registre_suivi_etalonnages.xlsx', registre)
+    registre_xlsx = dossier / 'registre_suivi_etalonnages.xlsx'
+    registre_csv = dossier / 'registre_suivi_etalonnages.csv'
+    if not registre_xlsx.exists():
+        if registre_csv.exists():
+            with registre_csv.open(newline='', encoding='utf-8-sig') as f:
+                rows = [r for r in csv.reader(f, delimiter=';') if r]
+            write_xlsx(registre_xlsx, REGISTRE_TITRE, rows[0], rows[1:], [0] * max(len(rows) - 1, 0), color_from=0)
+        else:
+            write_xlsx(registre_xlsx, REGISTRE_TITRE, REGISTRE_HEADER.split(';'), [], [], color_from=0)
+    if registre_csv.exists():
+        registre_csv.unlink()
+    write_registre_xlsx(registre_xlsx)
 
     for it in items:
         slug = slugs[id(it)]
@@ -763,7 +764,8 @@ def main():
         print(f'Aucune alerte à {args.seuil} jours à cette date.')
     print('')
     print('Calendrier unique mis à jour : Calendrier des étalonnages.xlsx (alertes + liens cliquables colonne J)')
-    print(f'Régénérés : calendrier_etalonnages.csv, alertes/alertes_preemption_{args.seuil}j.md, instruments/*/fiche_suivi.md, instruments/README.md, ANNEXES_AUDIT.md, annexes/')
+    print('Registre unique mis à jour : registre_suivi_etalonnages.xlsx (couleurs conformité)')
+    print(f'Régénérés : alertes/alertes_preemption_{args.seuil}j.md, instruments/*/fiche_suivi.md, instruments/README.md, ANNEXES_AUDIT.md, annexes/')
 
 
 if __name__ == '__main__':

@@ -8,15 +8,15 @@ Tous les fichiers sont directement éditables (Markdown, CSV, XLSX).
 ```
 METRO JP 1/
 ├── README.md                            ← ce fichier
-├── Calendrier des étalonnages.xlsx      ← LE SEUL calendrier : éditez-le (dates, ajout/suppression de lignes).
-│                                          Colonnes H/I/J (jours restants, alerte ≤ 30 j, lien cliquable
-│                                          « Fiche / annexe ») régénérées automatiquement par le script.
-├── calendrier_etalonnages.csv           ← export des données du calendrier
-├── registre_suivi_etalonnages.csv       ← journal GLOBAL (source éditable) de toutes les interventions :
-│                                          une ligne par étalonnage/vérification (date, appareil, n° série,
-│                                          prestataire, n° certificat, fichier, validité, conformité)
-├── registre_suivi_etalonnages.xlsx      ← vue colorée du registre : vert = conforme, orange = conforme avec
-│                                          restriction, rouge = non conforme
+├── Calendrier des étalonnages.xlsx      ← LE SEUL calendrier (source éditable + présentation) : éditez-le
+│                                          (dates, ajout/suppression de lignes). Colonnes H/I/J (jours restants,
+│                                          alerte ≤ 30 j colorée, lien cliquable « Fiche / annexe ») régénérées
+│                                          automatiquement par le script à chaque lancement.
+├── registre_suivi_etalonnages.xlsx      ← LE SEUL registre (journal GLOBAL de toutes les interventions, source
+│                                          éditable) : une ligne par étalonnage/vérification (date, appareil, n° série,
+│                                          prestataire, n° certificat, fichier, validité, conformité).
+│                                          Lignes colorées : vert = conforme, orange = conforme avec restriction,
+│                                          rouge = non conforme.
 ├── alertes/
 │   └── alertes_preemption_30j.md        ← rapport d'alertes généré : qui est en ALERTE / DÉPASSÉ à J-30
 ├── instruments/
@@ -64,13 +64,13 @@ Le script met à jour **le calendrier lui-même** (colonnes H/I/J + liens) et r�
 
 - **Modifier une date** : changez « date dernier étalonnage » / « date de validité ». Formats acceptés : `JJ/MM/AAAA`, `AAAA-MM-JJ`, `MM/AAAA` (fin de mois), `Mars 2030` (fin de mois), ou n° de série Excel.
 - **Ajouter un matériel** : ajoutez une ligne → son dossier `instruments/<n° série>/` est créé automatiquement au prochain lancement.
-- **Retirer un matériel** : supprimez sa ligne → il disparaît du calendrier/CSV/rapport, mais son dossier est **conservé** et listé « Hors calendrier » dans `instruments/README.md`.
+- **Retirer un matériel** : supprimez sa ligne → il disparaît du calendrier/rapport, mais son dossier est **conservé** et listé « Hors calendrier » dans `instruments/README.md`.
 
 ## À chaque étalonnage
 
 1. Compléter `instruments/<n° série>/rapport_etalonnage.md`.
 2. Ajouter une ligne dans l'historique de la `fiche_suivi.md`.
-3. Ajouter une ligne dans `registre_suivi_etalonnages.csv` (journal global).
+3. Ajouter une ligne dans `registre_suivi_etalonnages.xlsx` (journal global, colonne « conforme » colorée automatiquement).
 4. Déposer le certificat PDF dans `instruments/<n° série>/certificats/` (nom : `AAAA-MM-JJ_<n° série>_<n° certificat>.pdf`).
 5. Mettre à jour les dates du calendrier, puis relancer le script.
 
