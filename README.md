@@ -15,3 +15,15 @@
 ## Comment télécharger
 
 Sur la page du dépôt : bouton **« Code »** (vert) en haut à droite → **« Download ZIP »**.
+
+## METRO JP 1 — dossier de suivi métrologie complet
+
+Le dossier **`METRO JP 1/`** regroupe tout le suivi métrologie ALCO :
+- `Calendrier des étalonnages - ALERTES 30j.xlsx` — calendrier + colonnes « Jours restants » / « Alerte (préemption ≤ 30 j) », lignes colorées (orange = alerte, rouge = dépassé, vert = OK) ;
+- `alertes/alertes_preemption_30j.md` + `calendrier_etalonnages.csv` — rapport et données générés (seuil 30 jours, modifiable) ;
+- `instruments/<instrument>/` — 26 instruments, chacun avec sa `fiche_suivi.md` (historique rempli depuis les FO 202/FO 317), son `rapport_etalonnage.md` et son dossier `documents_techniques/` (manuels déposés) ;
+- `certificats/` — certificats d'étalonnage (INSIZE 2007, BEA A22EE08141C, BEA A26EJ02353, certificat usine TROTEC) ;
+- `registre_suivi_etalonnages.csv` — journal des interventions ;
+- `scripts/alerte_etalonnage.py` — régénère alertes/fiches après chaque mise à jour du calendrier (`python3 scripts/alerte_etalonnage.py`).
+
+**Télécharger** : bouton « Code » → « Download ZIP » (sur cette branche), ou le fichier `METRO JP 1.zip` dans l'espace partagé.
