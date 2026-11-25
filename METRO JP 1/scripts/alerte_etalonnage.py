@@ -2,6 +2,7 @@
 import argparse
 import csv
 import re
+import shutil
 import unicodedata
 import zipfile
 from datetime import date, timedelta
@@ -157,12 +158,13 @@ def xcell(ref, value, s=0):
 STYLES_XML = (
     '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
     '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
-    '<fonts count="5">'
+    '<fonts count="6">'
     '<font><sz val="11"/><name val="Calibri"/></font>'
     '<font><b/><sz val="11"/><name val="Calibri"/></font>'
     '<font><b/><color rgb="FF9C0006"/><sz val="11"/><name val="Calibri"/></font>'
     '<font><b/><color rgb="FF9C6500"/><sz val="11"/><name val="Calibri"/></font>'
     '<font><color rgb="FF006100"/><sz val="11"/><name val="Calibri"/></font>'
+    '<font><u/><color rgb="FF0563C1"/><sz val="11"/><name val="Calibri"/></font>'
     '</fonts>'
     '<fills count="6">'
     '<fill><patternFill patternType="none"/></fill>'
@@ -174,12 +176,13 @@ STYLES_XML = (
     '</fills>'
     '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>'
     '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'
-    '<cellXfs count="5">'
+    '<cellXfs count="6">'
     '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'
     '<xf numFmtId="0" fontId="1" fillId="5" borderId="0" xfId="0" applyFont="1" applyFill="1"/>'
     '<xf numFmtId="0" fontId="2" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/>'
     '<xf numFmtId="0" fontId="3" fillId="3" borderId="0" xfId="0" applyFont="1" applyFill="1"/>'
     '<xf numFmtId="0" fontId="4" fillId="4" borderId="0" xfId="0" applyFont="1" applyFill="1"/>'
+    '<xf numFmtId="0" fontId="5" fillId="0" borderId="0" xfId="0" applyFont="1"/>'
     '</cellXfs>'
     '</styleSheet>'
 )
@@ -187,7 +190,8 @@ STYLES_XML = (
 STYLE = {'DÉPASSÉ': 2, 'ALERTE': 3, 'OK': 4, 'INDÉTERMINÉ': 0}
 
 
-def write_xlsx(path, title, header, rows, row_styles):
+def write_xlsx(path, title, header, rows, row_styles, hyperlinks=None):
+    hyperlinks = hyperlinks or []
     def row_xml(r, values, styles):
         cells = ''.join(
             xcell(f'{col_letter(ci)}{r}', v, s=styles[ci])
@@ -197,17 +201,37 @@ def write_xlsx(path, title, header, rows, row_styles):
 
     body = [row_xml(1, [title], [1])]
     body.append(row_xml(2, header, [1] * len(header)))
+    last_data = len(rows[0]) - (1 if hyperlinks else 0) if rows else 0
     for i, (values, st) in enumerate(zip(rows, row_styles), start=3):
         styles = [0] * len(values)
-        for ci in range(6, len(values)):
+        for ci in range(6, last_data):
             styles[ci] = st
+        if hyperlinks:
+            styles[-1] = 5
         body.append(row_xml(i, values, styles))
+    hyper = ''
+    if hyperlinks:
+        hyper = '<hyperlinks>' + ''.join(
+            f'<hyperlink ref="{ref}" r:id="{rid}"/>' for rid, ref, _ in hyperlinks
+        ) + '</hyperlinks>'
     sheet = (
         '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
-        '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
-        f'<sheetData>{"".join(body)}</sheetData>'
+        '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" '
+        'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+        f'<sheetData>{"".join(body)}</sheetData>{hyper}'
         '</worksheet>'
     )
+    sheet_rels = ''
+    if hyperlinks:
+        sheet_rels = (
+            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+            + ''.join(
+                f'<Relationship Id="{rid}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink" Target="{escape(target, {chr(34): "&quot;"})}" TargetMode="External"/>'
+                for rid, _, target in hyperlinks
+            )
+            + '</Relationships>'
+        )
     parts = {
         '[Content_Types].xml': (
             '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
@@ -242,6 +266,8 @@ def write_xlsx(path, title, header, rows, row_styles):
         'xl/styles.xml': STYLES_XML,
         'xl/worksheets/sheet1.xml': sheet,
     }
+    if sheet_rels:
+        parts['xl/worksheets/_rels/sheet1.xml.rels'] = sheet_rels
     with zipfile.ZipFile(path, 'w', zipfile.ZIP_DEFLATED) as z:
         for name, data in parts.items():
             z.writestr(name, data)
@@ -411,7 +437,65 @@ def write_instruments_index(path, items, slugs, today, seuil):
             f"{jours} | **{it['statut']}** | [fiche_suivi.md]({slug}/fiche_suivi.md) |"
         )
     out.append('')
+    current = set(slugs.values())
+    stale = sorted(
+        p.name for p in path.parent.iterdir()
+        if p.is_dir() and p.name not in current and (p / 'fiche_suivi.md').exists()
+    )
+    if stale:
+        out.append("## Hors calendrier (conservés pour l'historique)")
+        out.append('')
+        for s in stale:
+            out.append(f'- [{s}]({s}/fiche_suivi.md) — retiré du calendrier, archivé ici (annexe : [{s}/annexe/]({s}/annexe/))')
+        out.append('')
     path.write_text('\n'.join(out), encoding='utf-8')
+
+
+def build_annexes(dossier):
+    instruments = dossier / 'instruments'
+    certificats = dossier / 'certificats'
+    cert_files = sorted(certificats.glob('*.pdf')) if certificats.exists() else []
+    index = [
+        '# Annexes audit — une annexe par instrument',
+        '',
+        "Chaque dossier `instruments/<instrument>/annexe/` regroupe tout ce qui concerne l'instrument pour un audit :",
+        'fiche de suivi, rapport d\'étalonnage, relevés FO 202 / FO 317, documents techniques (manuels) et certificats.',
+        '',
+        'Régénéré automatiquement par `scripts/alerte_etalonnage.py` (copies à jour des fichiers vivants).',
+        '',
+        '| Instrument | Annexe |',
+        '|---|---|',
+    ]
+    for idir in sorted(p for p in instruments.iterdir() if p.is_dir() and (p / 'fiche_suivi.md').exists()):
+        slug = idir.name
+        annexe = idir / 'annexe'
+        if annexe.exists():
+            shutil.rmtree(annexe)
+        (annexe / 'documents_techniques').mkdir(parents=True)
+        (annexe / 'certificats').mkdir()
+        shutil.copy2(idir / 'fiche_suivi.md', annexe / 'fiche_suivi.md')
+        rapport = idir / 'rapport_etalonnage.md'
+        if rapport.exists():
+            shutil.copy2(rapport, annexe / 'rapport_etalonnage.md')
+        for pdf in idir.glob('*.pdf'):
+            shutil.copy2(pdf, annexe / pdf.name)
+        dt = idir / 'documents_techniques'
+        if dt.exists():
+            for f in dt.iterdir():
+                if f.is_file() and f.name != 'LISEZMOI.txt':
+                    shutil.copy2(f, annexe / 'documents_techniques' / f.name)
+        for cert in cert_files:
+            token = cert.name.split('_')[1] if '_' in cert.name else ''
+            if token and (token in slug or slug in token or slug in cert.name):
+                shutil.copy2(cert, annexe / 'certificats' / cert.name)
+        titre = slug
+        for line in (idir / 'fiche_suivi.md').read_text(encoding='utf-8').splitlines():
+            if line.startswith('# '):
+                titre = line.lstrip('# ').strip()
+                break
+        index.append(f'| {titre} | [annexe/]({slug}/annexe/) |')
+    index.append('')
+    (instruments / 'ANNEXES_AUDIT.md').write_text('\n'.join(index), encoding='utf-8')
 
 
 def main():
@@ -470,21 +554,26 @@ def main():
         "Désignation de l'instrument", 'Fabricant', 'Référence fabricant (P/N…)',
         'Numéro de série', "Périodicité d'étalonnage", 'Date dernier étalonnage',
         'Date de validité (préemption)', f'Jours restants (au {today.isoformat()})',
-        f'Alerte (préemption ≤ {args.seuil} j)',
+        f'Alerte (préemption ≤ {args.seuil} j)', 'Fiche / annexe (audit)',
     ]
     rows = []
     row_styles = []
-    for it in items:
+    hyperlinks = []
+    for i, it in enumerate(items):
+        slug = slugs[id(it)]
+        ri = i + 3
         rows.append([
             it['designation'], it['fabricant'], it['ref'], it['serie'], it['periodicite'],
             fmt_date(it['dernier'], it['dernier_raw']), fmt_date(it['validite'], it['validite_raw']),
             '' if it['jours'] is None else it['jours'], f"{it['statut']} — {it['detail']}",
+            f'Annexe {slug}',
         ])
         row_styles.append(STYLE[it['statut']])
+        hyperlinks.append((f'hlink{i + 1}', f'J{ri}', f'instruments/{slug}/annexe/fiche_suivi.md'))
     write_xlsx(
         dossier / f'Calendrier des étalonnages - ALERTES {args.seuil}j.xlsx',
         f"Calendrier de suivi des dates d'étalonnage et de validité des outillages au sein d'ALCO — alertes de préemption ≤ {args.seuil} jours (généré le {today.isoformat()})",
-        header, rows, row_styles,
+        header, rows, row_styles, hyperlinks,
     )
 
     write_report(dossier / 'alertes' / f'alertes_preemption_{args.seuil}j.md', items, today, args.seuil)
@@ -506,6 +595,7 @@ def main():
             lisezmoi.write_text(DOC_TECH_LISEZMOI, encoding='utf-8')
 
     write_instruments_index(dossier / 'instruments' / 'README.md', items, slugs, today, args.seuil)
+    build_annexes(dossier)
 
     alerts = [it for it in items if it['statut'] in ('ALERTE', 'DÉPASSÉ')]
     print(f'Dossier : {dossier}')

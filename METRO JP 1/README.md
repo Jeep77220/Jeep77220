@@ -24,7 +24,9 @@ METRO JP 1/
 │       ├── fiche_suivi.md                     ← fiche suiveuse (section auto + historique à compléter)
 │       ├── rapport_etalonnage.md              ← rapport d'étalonnage à compléter à chaque campagne
 │       ├── (fiches FO 202 / FO 317 d'origine déposées à la racine, ex. palmer-atelier)
-│       └── documents_techniques/              ← manuels, notices constructeur, fiches techniques
+│       ├── documents_techniques/              ← manuels, notices constructeur, fiches techniques
+│       └── annexe/                            ← COPIE AUDIT : fiche + rapport + relevés FO + manuels + certificats
+└── ANNEXES_AUDIT.md                           ← index des annexes (une par instrument)
 ├── certificats/                               ← certificats d'étalonnage (PDF)
 ├── procedures/                                ← procédure FO 201 et procédures qualité
 └── scripts/
@@ -46,6 +48,16 @@ Après chaque modification du calendrier source (`Calendrier des étalonnages.xl
 ```bash
 python3 scripts/alerte_etalonnage.py
 ```
+
+## Modifier le calendrier (dates, ajout / retrait de matériel)
+
+Le fichier à éditer est **`Calendrier des étalonnages.xlsx`** (calendrier source). Le fichier « - ALERTES 30j.xlsx » est régénéré automatiquement : ne pas l'éditer à la main.
+
+- **Modifier une date** : changez « date dernier étalonnage » / « date de validité » sur la ligne concernée. Formats acceptés : `JJ/MM/AAAA`, `MM/AAAA` (fin de mois), `Mars 2030` (fin de mois), ou numéro de série Excel.
+- **Ajouter un matériel** : ajoutez une ligne (désignation, fabricant, réf., n° de série, périodicité, deux dates). Au prochain lancement du script, le dossier `instruments/<instrument>/` est créé automatiquement (fiche, rapport, documents_techniques, annexe) et la ligne apparaît avec son alerte et son lien cliquable.
+- **Retirer un matériel** : supprimez sa ligne. Au prochain lancement, il disparaît du calendrier / CSV / rapport d'alertes, mais son dossier `instruments/<...>/` est **conservé** (historique d'audit) et listé « Hors calendrier » dans `instruments/README.md`.
+
+Chaque ligne du calendrier « - ALERTES 30j.xlsx » comporte un lien cliquable (colonne **« Fiche / annexe (audit) »**) vers `instruments/<instrument>/annexe/fiche_suivi.md` : fiche complète (suivi interne, rapport d'étalonnage, relevés FO 202/FO 317, manuels, certificats).
 
 Options : `--seuil 30` (défaut), `--date 2026-12-31` (date de référence, défaut = aujourd'hui),
 `--calendrier <chemin>` et `--dossier <chemin>` si le dossier est déplacé.
