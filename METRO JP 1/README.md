@@ -38,6 +38,11 @@ METRO JP 1/
     └── alerte_etalonnage.py             ← met à jour le calendrier (alertes + liens) et régénère le dossier
 ```
 
+## ⚠️ Ouvrir le calendrier correctement (liens cliquables)
+
+- **Extraire tout le ZIP** (GitHub → Code → Download ZIP, ou `METRO JP 1.zip`) dans un dossier, puis ouvrir `METRO JP 1/Calendrier des étalonnages.xlsx` depuis le dossier extrait. Ne pas ouvrir le xlsx directement depuis la vue compressée du ZIP (les liens seraient cassés).
+- Les liens de la colonne J sont **relatifs** au dossier `METRO JP 1/` : ne déplacez pas le calendrier hors de ce dossier (garde-le avec `instruments/`).
+
 ## Règle d'alerte (préemption à 30 jours)
 
 - La **date de validité** est la date de préemption : date limite avant laquelle l'instrument doit être réétalonné.
