@@ -18,116 +18,116 @@ jobs:
       - name: Ecrire le script de correction
         run: |
           cat > /tmp/fix.py << 'PYEOF'
-import json, re, posixpath, subprocess, zipfile, urllib.parse
-import xml.etree.ElementTree as ET
-import unicodedata
-
-XLSX = "METRO JP 1/Calendrier des étalonnages.xlsx"
-M = '{http://schemas.openxmlformats.org/spreadsheetml/2006/main}'
-R = '{http://schemas.openxmlformats.org/officeDocument/2006/relationships}'
-
-paths = subprocess.check_output(["git", "ls-tree", "-r", "--name-only", "HEAD"]).decode().splitlines()
-
-def norm(s):
-    return re.sub(r"s+", " ", unicodedata.normalize("NFC", s.strip().casefold()))
-
-docs, fiches = {}, {}
-for p in paths:
-    if "/" not in p:
-        continue
-    base = norm(p.rsplit("/", 1)[1])
-    if p.startswith("METRO JP 1/documents/") and base != "thumbs.db":
-        docs.setdefault(base, p)
-    elif p.startswith("fiches pré-remplies/"):
-        fiches.setdefault(base, p)
-
-z = zipfile.ZipFile("/tmp/orig.xlsx")
-shx = ET.fromstring(z.read("xl/worksheets/sheet1.xml"))
-hyper = {}
-for h in shx.iter(M + "hyperlink"):
-    hyper[h.get("ref")] = h.get(R + "id")
-
-rels_raw = z.read("xl/worksheets/_rels/sheet1.xml.rels").decode("utf-8")
-relmap2 = {}
-for el in re.finditer(r"<Relationship [^>]*/>", rels_raw):
-    e = el.group(0)
-    rid = re.search(r"Id="([^"]+)"", e)
-    tgt = re.search(r"Target="([^"]*)"", e)
-    if rid and tgt:
-        relmap2[rid.group(1)] = tgt.group(1)
-
-j18_rid = hyper.get("J18")
-
-fixes = {}
-for ref, rid in hyper.items():
-    tgt = relmap2.get(rid)
-    if not tgt:
-        continue
-    if tgt.startswith("../fiches pré-remplies/"):
-        base = tgt[len("../fiches pré-remplies/"):]
-        m = fiches.get(norm(base))
-        if m:
-            fixes[rid] = "../" + m
-    elif tgt.startswith("documents/"):
-        base = tgt[len("documents/"):]
-        if norm(base) == norm("Manuel Mètre Lazer Bosh 224427088.pdf"):
-            continue
-        m = docs.get(norm(base))
-        if m:
-            fixes[rid] = "documents/" + m[len("METRO JP 1/documents/"):]
-        elif norm(base) == norm("BLET - Notice PCDXX.pdf"):
-            for p in paths:
-                if p.endswith("Manuel BLET - Notice PCDXX.pdf"):
-                    fixes[rid] = "documents/" + p[len("METRO JP 1/documents/"):]
-
-def esc(s):
-    return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
-
-def fix_rel(m):
-    el = m.group(0)
-    ridm = re.search(r"Id="([^"]+)"", el)
-    if not ridm:
-        return el
-    rid = ridm.group(1)
-    if rid in fixes:
-        el = re.sub(r"Target="[^"]*"", 'Target="' + esc(fixes[rid]) + '"', el)
-    return el
-
-rels_raw3 = re.sub(r"<Relationship [^>]*/>", fix_rel, rels_raw)
-rels_raw3 = re.sub(r"<Relationship [^>]*Id="" + re.escape(j18_rid) + r"[^>]*/>", "", rels_raw3)
-
-sh_raw = z.read("xl/worksheets/sheet1.xml").decode("utf-8")
-sh_raw = re.sub(r"<hyperlink [^>]*ref="J18"[^>]*/>", "", sh_raw)
-sh_raw = re.sub(r"<c r="J18"[^>]*>.*?</c>",
-                '<c r="J18" s="5" t="inlineStr"><is><t>non requis</t></is></c>', sh_raw, flags=re.S)
-
-with zipfile.ZipFile(XLSX, "w", zipfile.ZIP_DEFLATED) as zout:
-    for item in z.infolist():
-        data = z.read(item.filename)
-        if item.filename == "xl/worksheets/_rels/sheet1.xml.rels":
-            data = rels_raw3.encode("utf-8")
-        elif item.filename == "xl/worksheets/sheet1.xml":
-            data = sh_raw.encode("utf-8")
-        zout.writestr(item, data)
-
-pathset = set(paths)
-z2 = zipfile.ZipFile(XLSX)
-relsv = ET.fromstring(z2.read("xl/worksheets/_rels/sheet1.xml.rels"))
-relmapv = {r.get("Id"): r.get("Target") for r in relsv}
-shv = ET.fromstring(z2.read("xl/worksheets/sheet1.xml"))
-ok = bad = 0
-for h in shv.iter(M + "hyperlink"):
-    tgt = relmapv.get(h.get(R + "id")) or h.get("location")
-    full = posixpath.normpath(posixpath.join("METRO JP 1", tgt))
-    if urllib.parse.unquote(full) in pathset or full in pathset:
-        ok += 1
-    else:
-        bad += 1
-        print("CASSE:", h.get("ref"), tgt)
-print("liens valides:", ok, "| casses:", bad)
-assert bad == 0, "liens casses restants"
-
-PYEOF
+          import re, posixpath, subprocess, zipfile, urllib.parse
+          import xml.etree.ElementTree as ET
+          import unicodedata
+          
+          XLSX = "METRO JP 1/Calendrier des étalonnages.xlsx"
+          M = '{http://schemas.openxmlformats.org/spreadsheetml/2006/main}'
+          R = '{http://schemas.openxmlformats.org/officeDocument/2006/relationships}'
+          
+          paths = subprocess.check_output(["git", "ls-tree", "-r", "--name-only", "HEAD"]).decode().splitlines()
+          
+          def norm(s):
+              return re.sub(r"s+", " ", unicodedata.normalize("NFC", s.strip().casefold()))
+          
+          docs, fiches = {}, {}
+          for p in paths:
+              if "/" not in p:
+                  continue
+              base = norm(p.rsplit("/", 1)[1])
+              if p.startswith("METRO JP 1/documents/") and base != "thumbs.db":
+                  docs.setdefault(base, p)
+              elif p.startswith("fiches pré-remplies/"):
+                  fiches.setdefault(base, p)
+          
+          z = zipfile.ZipFile("/tmp/orig.xlsx")
+          shx = ET.fromstring(z.read("xl/worksheets/sheet1.xml"))
+          hyper = {}
+          for h in shx.iter(M + "hyperlink"):
+              hyper[h.get("ref")] = h.get(R + "id")
+          
+          rels_raw = z.read("xl/worksheets/_rels/sheet1.xml.rels").decode("utf-8")
+          relmap2 = {}
+          for el in re.finditer(r"<Relationship [^>]*/>", rels_raw):
+              e = el.group(0)
+              rid = re.search(r"Id="([^"]+)"", e)
+              tgt = re.search(r"Target="([^"]*)"", e)
+              if rid and tgt:
+                  relmap2[rid.group(1)] = tgt.group(1)
+          
+          j18_rid = hyper.get("J18")
+          
+          fixes = {}
+          for ref, rid in hyper.items():
+              tgt = relmap2.get(rid)
+              if not tgt:
+                  continue
+              if tgt.startswith("../fiches pré-remplies/"):
+                  base = tgt[len("../fiches pré-remplies/"):]
+                  m = fiches.get(norm(base))
+                  if m:
+                      fixes[rid] = "../" + m
+              elif tgt.startswith("documents/"):
+                  base = tgt[len("documents/"):]
+                  if norm(base) == norm("Manuel Mètre Lazer Bosh 224427088.pdf"):
+                      continue
+                  m = docs.get(norm(base))
+                  if m:
+                      fixes[rid] = "documents/" + m[len("METRO JP 1/documents/"):]
+                  elif norm(base) == norm("BLET - Notice PCDXX.pdf"):
+                      for p in paths:
+                          if p.endswith("Manuel BLET - Notice PCDXX.pdf"):
+                              fixes[rid] = "documents/" + p[len("METRO JP 1/documents/"):]
+          
+          def esc(s):
+              return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
+          
+          def fix_rel(m):
+              el = m.group(0)
+              ridm = re.search(r"Id="([^"]+)"", el)
+              if not ridm:
+                  return el
+              rid = ridm.group(1)
+              if rid in fixes:
+                  el = re.sub(r"Target="[^"]*"", 'Target="' + esc(fixes[rid]) + '"', el)
+              return el
+          
+          rels_raw3 = re.sub(r"<Relationship [^>]*/>", fix_rel, rels_raw)
+          rels_raw3 = re.sub(r"<Relationship [^>]*Id="" + re.escape(j18_rid) + r"[^>]*/>", "", rels_raw3)
+          
+          sh_raw = z.read("xl/worksheets/sheet1.xml").decode("utf-8")
+          sh_raw = re.sub(r"<hyperlink [^>]*ref="J18"[^>]*/>", "", sh_raw)
+          sh_raw = re.sub(r"<c r="J18"[^>]*>.*?</c>",
+                          '<c r="J18" s="5" t="inlineStr"><is><t>non requis</t></is></c>', sh_raw, flags=re.S)
+          
+          with zipfile.ZipFile(XLSX, "w", zipfile.ZIP_DEFLATED) as zout:
+              for item in z.infolist():
+                  data = z.read(item.filename)
+                  if item.filename == "xl/worksheets/_rels/sheet1.xml.rels":
+                      data = rels_raw3.encode("utf-8")
+                  elif item.filename == "xl/worksheets/sheet1.xml":
+                      data = sh_raw.encode("utf-8")
+                  zout.writestr(item, data)
+          
+          pathset = set(paths)
+          z2 = zipfile.ZipFile(XLSX)
+          relsv = ET.fromstring(z2.read("xl/worksheets/_rels/sheet1.xml.rels"))
+          relmapv = {r.get("Id"): r.get("Target") for r in relsv}
+          shv = ET.fromstring(z2.read("xl/worksheets/sheet1.xml"))
+          ok = bad = 0
+          for h in shv.iter(M + "hyperlink"):
+              tgt = relmapv.get(h.get(R + "id")) or h.get("location")
+              full = posixpath.normpath(posixpath.join("METRO JP 1", tgt))
+              if urllib.parse.unquote(full) in pathset or full in pathset:
+                  ok += 1
+              else:
+                  bad += 1
+                  print("CASSE:", h.get("ref"), tgt)
+          print("liens valides:", ok, "| casses:", bad)
+          assert bad == 0, "liens casses restants"
+          
+          PYEOF
       - name: Restaurer le classeur d'origine et corriger les liens
         run: |
           git show 155ec615c514dfd6cbcdc58dc63714b02c45d18a:"METRO JP 1/Calendrier des étalonnages.xlsx" > /tmp/orig.xlsx
