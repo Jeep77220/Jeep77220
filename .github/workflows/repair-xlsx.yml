@@ -27,7 +27,7 @@ jobs:
           M = '{http://schemas.openxmlformats.org/spreadsheetml/2006/main}'
           R = '{http://schemas.openxmlformats.org/officeDocument/2006/relationships}'
           
-          paths = subprocess.check_output(["git", "ls-tree", "-r", "--name-only", "HEAD"]).decode().splitlines()
+          paths = subprocess.check_output(["git", "-c", "core.quotepath=false", "ls-tree", "-r", "--name-only", "HEAD"]).decode("utf-8").splitlines()
           print("chemins:", len(paths))
           
           def norm(s):
@@ -131,22 +131,14 @@ jobs:
           print("liens valides:", ok, "| casses:", bad)
           assert bad == 0, "liens casses restants"
           PYEOF
-      - name: Restaurer, corriger, publier et diagnostiquer
+      - name: Restaurer, corriger et pousser sur la branche principale
         run: |
-          set +e
-          git show 155ec615c514dfd6cbcdc58dc63714b02c45d18a:"METRO JP 1/Calendrier des étalonnages.xlsx" > /tmp/orig.xlsx 2>/tmp/err_git.txt
-          E1=$?
-          file /tmp/orig.xlsx > /tmp/diag.txt 2>&1
-          cat /tmp/err_git.txt >> /tmp/diag.txt
-          python3 /tmp/fix.py >> /tmp/diag.txt 2>&1
-          E2=$?
-          echo "E1=$E1 E2=$E2" >> /tmp/diag.txt
+          set -e
+          git show 155ec615c514dfd6cbcdc58dc63714b02c45d18a:"METRO JP 1/Calendrier des étalonnages.xlsx" > /tmp/orig.xlsx
+          file /tmp/orig.xlsx
+          python3 /tmp/fix.py
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          cp /tmp/diag.txt diag.txt
-          if [ "$E2" = "0" ]; then git add "METRO JP 1/Calendrier des étalonnages.xlsx" diag.txt; fi
-          git add diag.txt
-          git commit -m "Diagnostic + calendrier corrige"
-          git push origin HEAD:refs/heads/diag
-          cat /tmp/diag.txt
-          exit $E2
+          git add "METRO JP 1/Calendrier des étalonnages.xlsx"
+          git commit -m "Calendrier : correction des liens vers les sous-dossiers documents (65/65 valides)"
+          git push origin HEAD:vibe/fiches-fo202-e3dd98
