@@ -1,3 +1,4 @@
-lien direct extrait: https://tmpfiles.org/dl/1795692383.5c9a057ab9486c6f/wGA4axEn3QM1/manuel_ir20.pdf
-md5: be2c289af3790110f91163f4ff481541 taille: 383904
-liens valides: 66 | casses: 0
+trames generees : 52
+verification fiches de suivi : OK
+liens valides: 118 | casses: 0
+XLSX mis a jour : colonnes K et L, 118 liens valides
