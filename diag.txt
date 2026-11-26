@@ -1,4 +1,0 @@
-trames generees : 52
-verification fiches de suivi : OK
-liens valides: 118 | casses: 0
-XLSX mis a jour : colonnes K et L, 118 liens valides
