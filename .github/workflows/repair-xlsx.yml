@@ -1,0 +1,143 @@
+name: Reparer les liens du calendrier
+
+on:
+  push:
+    branches: [vibe/fiches-fo202-e3dd98]
+    paths: ['repair.txt']
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Ecrire le script
+        run: |
+          cat > /tmp/fix.py << 'PYEOF'
+          import posixpath, re, subprocess, urllib.parse, shutil
+          import xml.etree.ElementTree as ET
+          import unicodedata
+          import zipfile
+          
+          XLSX = "METRO JP 1/Calendrier des étalonnages.xlsx"
+          M = '{http://schemas.openxmlformats.org/spreadsheetml/2006/main}'
+          R = '{http://schemas.openxmlformats.org/officeDocument/2006/relationships}'
+          
+          paths = subprocess.check_output(["git", "-c", "core.quotepath=false", "ls-tree", "-r", "--name-only", "HEAD"]).decode("utf-8").splitlines()
+          
+          def norm(s):
+              return re.sub(r"\s+", " ", unicodedata.normalize("NFC", s.strip().casefold()))
+          
+          folders = {}
+          for p in paths:
+              if not p.startswith("METRO JP 1/documents/"):
+                  continue
+              rest = p[len("METRO JP 1/documents/"):]
+              parts = rest.split("/", 1)
+              if len(parts) == 2:
+                  folders.setdefault(parts[0], []).append(parts[1])
+          
+          z = zipfile.ZipFile(XLSX)
+          shx = ET.fromstring(z.read("xl/worksheets/sheet1.xml"))
+          links = {}
+          for h in shx.iter(M + "hyperlink"):
+              links[h.get("ref")] = h.get(R + "id")
+          rels_raw = z.read("xl/worksheets/_rels/sheet1.xml.rels").decode("utf-8")
+          relmap = {}
+          for el in re.finditer(r"<Relationship [^>]*/>", rels_raw):
+              e = el.group(0)
+              rid = re.search(r'Id="([^"]+)"', e)
+              tgt = re.search(r'Target="([^"]*)"', e)
+              if rid and tgt:
+                  relmap[rid.group(1)] = tgt.group(1)
+          
+          row_folder = {}
+          for c in ('I', 'J'):
+              for ref, rid in links.items():
+                  if not ref.startswith(c):
+                      continue
+                  t = relmap.get(rid, '')
+                  if t.startswith("documents/") and t.count("/") >= 2:
+                      row_folder.setdefault(ref[1:], t.split("/")[1])
+          
+          fixes = {}
+          kept = []
+          for ref, rid in links.items():
+              if not ref.startswith('H'):
+                  continue
+              folder = row_folder.get(ref[1:])
+              if not folder:
+                  continue
+              files = folders.get(folder, [])
+              signed = [f for f in files if norm(f).startswith("fiche de suivi")]
+              fo202 = [f for f in files if "fo 202" in norm(f)]
+              docx = [f for f in files if norm(f).endswith(".docx")]
+              chosen = None
+              if signed:
+                  chosen = "documents/" + folder + "/" + sorted(signed)[0]
+              elif fo202:
+                  chosen = "documents/" + folder + "/" + sorted(fo202)[0]
+              elif docx:
+                  chosen = "documents/" + folder + "/" + sorted(docx)[0]
+              if chosen:
+                  fixes[rid] = chosen
+              else:
+                  kept.append((ref, folder))
+          print("fiches de suivi reliees:", len(fixes))
+          print("lignes sans fiche dans le dossier:", kept)
+          assert len(fixes) == 24, "attendu 24, obtenu " + str(len(fixes))
+          
+          def esc(s):
+              return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
+          
+          def fix_rel(m):
+              el = m.group(0)
+              ridm = re.search(r'Id="([^"]+)"', el)
+              if not ridm:
+                  return el
+              rid = ridm.group(1)
+              if rid in fixes:
+                  el = re.sub(r'Target="[^"]*"', 'Target="' + esc(fixes[rid]) + '"', el)
+              return el
+          
+          rels_raw3 = re.sub(r"<Relationship [^>]*/>", fix_rel, rels_raw)
+          
+          tmp = "/tmp/fixed.xlsx"
+          with zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as zout:
+              for item in z.infolist():
+                  data = z.read(item.filename)
+                  if item.filename == "xl/worksheets/_rels/sheet1.xml.rels":
+                      data = rels_raw3.encode("utf-8")
+                  zout.writestr(item, data)
+          
+          pathset = set(paths)
+          z2 = zipfile.ZipFile(tmp)
+          relsv = ET.fromstring(z2.read("xl/worksheets/_rels/sheet1.xml.rels"))
+          relmapv = {r.get("Id"): r.get("Target") for r in relsv}
+          shv = ET.fromstring(z2.read("xl/worksheets/sheet1.xml"))
+          ok = bad = 0
+          for h in shv.iter(M + "hyperlink"):
+              tgt = relmapv.get(h.get(R + "id")) or h.get("location")
+              full = posixpath.normpath(posixpath.join("METRO JP 1", tgt))
+              if urllib.parse.unquote(full) in pathset or full in pathset:
+                  ok += 1
+              else:
+                  bad += 1
+                  print("CASSE:", h.get("ref"), tgt)
+          print("liens valides:", ok, "| casses:", bad)
+          assert bad == 0, "liens casses restants"
+          shutil.copy(tmp, XLSX)
+          PYEOF
+      - name: Relier toutes les fiches de suivi et pousser
+        run: |
+          set -e
+          python3 /tmp/fix.py
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "METRO JP 1/Calendrier des étalonnages.xlsx"
+          git commit -m "Calendrier : colonne Fiche de suivi reliee aux fiches des instruments (24 reliees)"
+          git push origin HEAD:vibe/fiches-fo202-e3dd98
