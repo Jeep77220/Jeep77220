@@ -18,12 +18,11 @@ jobs:
           pip install --quiet openpyxl
           python3 - << 'PY'
           import json
-          from urllib.parse import quote
           from openpyxl import Workbook
           from openpyxl.styles import Font, PatternFill, Border, Side, Alignment
           from openpyxl.utils import get_column_letter
 
-          BASE_FICHES = 'https://github.com/Jeep77220/Jeep77220/blob/vibe/fiches-fo202-e3dd98/' + quote('fiches pré-remplies') + '/'
+          BASE_FICHES = '../fiches pré-remplies/'
 
           with open('METRO JP 1/calendrier_data.json', encoding='utf-8') as f:
               rows = json.load(f)
@@ -50,7 +49,7 @@ jobs:
           for r in range(3, ws.max_row + 1):
               fc = ws.cell(row=r, column=ncols)
               if fc.value:
-                  fc.hyperlink = BASE_FICHES + quote(fc.value)
+                  fc.hyperlink = BASE_FICHES + fc.value
                   fc.value = 'Ouvrir la fiche'
                   fc.font = link_font
                   fc.alignment = Alignment(horizontal='center', vertical='center')
@@ -70,5 +69,5 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git rm -f --ignore-unmatch "METRO JP 1/Calendrier des etalonnages.xlsx"
           git add "METRO JP 1/Calendrier des étalonnages.xlsx"
-          git commit -m "Calendrier des etalonnages : colonne Fiche de suivi cliquable vers les fiches FO 202 du depot" || echo "aucun changement"
+          git commit -m "Calendrier des etalonnages : liens locaux vers les fiches FO 202 du dossier fiches pre-remplies" || echo "aucun changement"
           git push
