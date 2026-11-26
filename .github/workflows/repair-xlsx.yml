@@ -18,7 +18,7 @@ jobs:
       - name: Ecrire le script de correction
         run: |
           cat > /tmp/fix.py << 'PYEOF'
-          import base64, json, os, posixpath, re, subprocess, urllib.parse, urllib.request
+          import posixpath, re, subprocess, urllib.parse
           import xml.etree.ElementTree as ET
           import unicodedata
           import zipfile
@@ -105,8 +105,7 @@ jobs:
           sh_raw = re.sub(r'<c r="J18"[^>]*>.*?</c>',
                           '<c r="J18" s="5" t="inlineStr"><is><t>non requis</t></is></c>', sh_raw, flags=re.S)
           
-          out = "/tmp/fixed.xlsx"
-          with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as zout:
+          with zipfile.ZipFile(XLSX, "w", zipfile.ZIP_DEFLATED) as zout:
               for item in z.infolist():
                   data = z.read(item.filename)
                   if item.filename == "xl/worksheets/_rels/sheet1.xml.rels":
@@ -116,7 +115,7 @@ jobs:
                   zout.writestr(item, data)
           
           pathset = set(paths)
-          z2 = zipfile.ZipFile(out)
+          z2 = zipfile.ZipFile(XLSX)
           relsv = ET.fromstring(z2.read("xl/worksheets/_rels/sheet1.xml.rels"))
           relmapv = {r.get("Id"): r.get("Target") for r in relsv}
           shv = ET.fromstring(z2.read("xl/worksheets/sheet1.xml"))
@@ -131,29 +130,16 @@ jobs:
                   print("CASSE:", h.get("ref"), tgt)
           print("liens valides:", ok, "| casses:", bad)
           assert bad == 0, "liens casses restants"
-          
-          blob_sha = subprocess.check_output(["git", "rev-parse", "HEAD:" + XLSX]).decode().strip()
-          b64 = base64.b64encode(open(out, "rb").read()).decode()
-          token = os.environ["GITHUB_TOKEN"]
-          body = {
-              "message": "Calendrier : correction des liens vers les sous-dossiers documents (65/65 valides)",
-              "content": b64,
-              "sha": blob_sha,
-              "branch": "vibe/fiches-fo202-e3dd98",
-          }
-          req = urllib.request.Request(
-              "https://api.github.com/repos/Jeep77220/Jeep77220/contents/" + urllib.parse.quote(XLSX),
-              data=json.dumps(body).encode(),
-              method="PUT",
-              headers={"Authorization": "Bearer " + token, "Accept": "application/vnd.github+json"},
-          )
-          with urllib.request.urlopen(req) as resp:
-              print("API status:", resp.status)
-          print("Mise a jour effectuee")
           PYEOF
-      - name: Restaurer, corriger, publier via API
+      - name: Restaurer, corriger, committer
         run: |
           set -x
           git show 155ec615c514dfd6cbcdc58dc63714b02c45d18a:"METRO JP 1/Calendrier des étalonnages.xlsx" > /tmp/orig.xlsx
           file /tmp/orig.xlsx
           python3 /tmp/fix.py
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "METRO JP 1/Calendrier des étalonnages.xlsx"
+          git status --short
+          git commit -m "Calendrier : correction des liens vers les sous-dossiers documents (65/65 valides)"
+          git push
