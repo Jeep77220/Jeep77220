@@ -18,7 +18,7 @@ jobs:
       - name: Ecrire le script de correction
         run: |
           cat > /tmp/fix.py << 'PYEOF'
-          import base64, json, os, re, subprocess, urllib.parse
+          import base64, json, os, posixpath, re, subprocess, urllib.parse, urllib.request
           import xml.etree.ElementTree as ET
           import unicodedata
           import zipfile
@@ -31,7 +31,7 @@ jobs:
           print("chemins:", len(paths))
           
           def norm(s):
-              return re.sub(r"s+", " ", unicodedata.normalize("NFC", s.strip().casefold()))
+              return re.sub(r"\s+", " ", unicodedata.normalize("NFC", s.strip().casefold()))
           
           docs, fiches = {}, {}
           for p in paths:
@@ -53,8 +53,8 @@ jobs:
           relmap2 = {}
           for el in re.finditer(r"<Relationship [^>]*/>", rels_raw):
               e = el.group(0)
-              rid = re.search(r"Id=\"([^\"]+)\"", e)
-              tgt = re.search(r"Target=\"([^\"]*)\"", e)
+              rid = re.search(r'Id="([^"]+)"', e)
+              tgt = re.search(r'Target="([^"]*)"', e)
               if rid and tgt:
                   relmap2[rid.group(1)] = tgt.group(1)
           
@@ -88,21 +88,21 @@ jobs:
           
           def fix_rel(m):
               el = m.group(0)
-              ridm = re.search(r"Id=\"([^\"]+)\"", el)
+              ridm = re.search(r'Id="([^"]+)"', el)
               if not ridm:
                   return el
               rid = ridm.group(1)
               if rid in fixes:
-                  el = re.sub(r"Target=\"[^\"]*\"", 'Target="' + esc(fixes[rid]) + '"', el)
+                  el = re.sub(r'Target="[^"]*"', 'Target="' + esc(fixes[rid]) + '"', el)
               return el
           
           rels_raw3 = re.sub(r"<Relationship [^>]*/>", fix_rel, rels_raw)
-          rels_raw3 = re.sub(r"<Relationship [^>]*Id=\"" + re.escape(j18_rid) + r"[^>]*/>", "", rels_raw3)
+          rels_raw3 = re.sub(r'<Relationship [^>]*Id="' + re.escape(j18_rid) + r'[^>]*/>', "", rels_raw3)
           assert j18_rid not in rels_raw3
           
           sh_raw = z.read("xl/worksheets/sheet1.xml").decode("utf-8")
-          sh_raw = re.sub(r"<hyperlink [^>]*ref=\"J18\"[^>]*/>", "", sh_raw)
-          sh_raw = re.sub(r"<c r=\"J18\"[^>]*>.*?</c>",
+          sh_raw = re.sub(r'<hyperlink [^>]*ref="J18"[^>]*/>', "", sh_raw)
+          sh_raw = re.sub(r'<c r="J18"[^>]*>.*?</c>',
                           '<c r="J18" s="5" t="inlineStr"><is><t>non requis</t></is></c>', sh_raw, flags=re.S)
           
           out = "/tmp/fixed.xlsx"
@@ -112,7 +112,7 @@ jobs:
                   if item.filename == "xl/worksheets/_rels/sheet1.xml.rels":
                       data = rels_raw3.encode("utf-8")
                   elif item.filename == "xl/worksheets/sheet1.xml":
-                      data = sha = sh_raw.encode("utf-8")
+                      data = sh_raw.encode("utf-8")
                   zout.writestr(item, data)
           
           pathset = set(paths)
@@ -132,7 +132,6 @@ jobs:
           print("liens valides:", ok, "| casses:", bad)
           assert bad == 0, "liens casses restants"
           
-          # blob sha du fichier actuel
           blob_sha = subprocess.check_output(["git", "rev-parse", "HEAD:" + XLSX]).decode().strip()
           b64 = base64.b64encode(open(out, "rb").read()).decode()
           token = os.environ["GITHUB_TOKEN"]
@@ -151,9 +150,8 @@ jobs:
           with urllib.request.urlopen(req) as resp:
               print("API status:", resp.status)
           print("Mise a jour effectuee")
-          
           PYEOF
-      - name: Restaurer le classeur d'origine, corriger les liens, publier via API
+      - name: Restaurer, corriger, publier via API
         run: |
           set -x
           git show 155ec615c514dfd6cbcdc58dc63714b02c45d18a:"METRO JP 1/Calendrier des étalonnages.xlsx" > /tmp/orig.xlsx
