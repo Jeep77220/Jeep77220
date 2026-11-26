@@ -1,0 +1,23 @@
+name: Generer le calendrier des etalonnages (Excel)
+
+on:
+  push:
+    branches: [vibe/fiches-fo202-e3dd98]
+    paths: ['METRO JP 1/calendrier_etalonnages_base64.txt']
+
+permissions:
+  contents: write
+
+jobs:
+  generer-xlsx:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Decoder et committer le classeur Excel
+        run: |
+          base64 -d "METRO JP 1/calendrier_etalonnages_base64.txt" > "METRO JP 1/Calendrier des etalonnages.xlsx"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "METRO JP 1/Calendrier des etalonnages.xlsx"
+          git commit -m "Mise a jour du calendrier des etalonnages (dates corrigees d'apres les fiches et certificats 2024-2026)" || echo "aucun changement"
+          git push
