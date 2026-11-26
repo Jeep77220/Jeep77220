@@ -52,11 +52,12 @@ jobs:
           for i, w in enumerate(widths[:ncols], start=1):
               ws.column_dimensions[get_column_letter(i)].width = w
           ws.freeze_panes = 'A3'
-          wb.save('METRO JP 1/Calendrier des etalonnages.xlsx')
+          wb.save('METRO JP 1/Calendrier des étalonnages.xlsx')
           print('Classeur genere')
           PY
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add "METRO JP 1/Calendrier des etalonnages.xlsx"
+          git rm -f --ignore-unmatch "METRO JP 1/Calendrier des etalonnages.xlsx"
+          git add "METRO JP 1/Calendrier des étalonnages.xlsx"
           git commit -m "Mise a jour du calendrier des etalonnages (dates corrigees d'apres les fiches et certificats 2024-2026)" || echo "aucun changement"
           git push
