@@ -131,15 +131,22 @@ jobs:
           print("liens valides:", ok, "| casses:", bad)
           assert bad == 0, "liens casses restants"
           PYEOF
-      - name: Restaurer, corriger, committer
+      - name: Restaurer, corriger, publier et diagnostiquer
         run: |
-          set -x
-          git show 155ec615c514dfd6cbcdc58dc63714b02c45d18a:"METRO JP 1/Calendrier des étalonnages.xlsx" > /tmp/orig.xlsx
-          file /tmp/orig.xlsx
-          python3 /tmp/fix.py
+          set +e
+          git show 155ec615c514dfd6cbcdc58dc63714b02c45d18a:"METRO JP 1/Calendrier des étalonnages.xlsx" > /tmp/orig.xlsx 2>/tmp/err_git.txt
+          E1=$?
+          file /tmp/orig.xlsx > /tmp/diag.txt 2>&1
+          cat /tmp/err_git.txt >> /tmp/diag.txt
+          python3 /tmp/fix.py >> /tmp/diag.txt 2>&1
+          E2=$?
+          echo "E1=$E1 E2=$E2" >> /tmp/diag.txt
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add "METRO JP 1/Calendrier des étalonnages.xlsx"
-          git status --short
-          git commit -m "Calendrier : correction des liens vers les sous-dossiers documents (65/65 valides)"
-          git push
+          cp /tmp/diag.txt diag.txt
+          if [ "$E2" = "0" ]; then git add "METRO JP 1/Calendrier des étalonnages.xlsx" diag.txt; fi
+          git add diag.txt
+          git commit -m "Diagnostic + calendrier corrige"
+          git push origin HEAD:refs/heads/diag
+          cat /tmp/diag.txt
+          exit $E2
