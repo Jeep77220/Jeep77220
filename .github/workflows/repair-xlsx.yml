@@ -15,26 +15,21 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 20
-      - name: Restaurer le classeur d'origine puis corriger les liens
-        run: |
-          git show 155ec615c514dfd6cbcdc58dc63714b02c45d18a:"METRO JP 1/Calendrier des étalonnages.xlsx" > /tmp/orig.xlsx
-          python3 /tmp/fix.py
-        # script ecrit ci-dessous
-      - name: Ecrire le script
+      - name: Ecrire le script de correction
         run: |
           cat > /tmp/fix.py << 'PYEOF'
-import json, re, posixpath, subprocess, zipfile
+import json, re, posixpath, subprocess, zipfile, urllib.parse
 import xml.etree.ElementTree as ET
+import unicodedata
 
 XLSX = "METRO JP 1/Calendrier des étalonnages.xlsx"
 M = '{http://schemas.openxmlformats.org/spreadsheetml/2006/main}'
 R = '{http://schemas.openxmlformats.org/officeDocument/2006/relationships}'
 
-paths = subprocess.check_output(
-    ["git", "ls-tree", "-r", "--name-only", "HEAD"]).decode().splitlines()
+paths = subprocess.check_output(["git", "ls-tree", "-r", "--name-only", "HEAD"]).decode().splitlines()
 
 def norm(s):
-    return re.sub(r"\s+", " ", __import__("unicodedata").normalize("NFC", s.strip().casefold()))
+    return re.sub(r"s+", " ", unicodedata.normalize("NFC", s.strip().casefold()))
 
 docs, fiches = {}, {}
 for p in paths:
@@ -51,26 +46,18 @@ shx = ET.fromstring(z.read("xl/worksheets/sheet1.xml"))
 hyper = {}
 for h in shx.iter(M + "hyperlink"):
     hyper[h.get("ref")] = h.get(R + "id")
-for p in paths:
-    if p.endswith("Manuel BLET - Notice PCDXX.pdf"):
-        pass
 
 rels_raw = z.read("xl/worksheets/_rels/sheet1.xml.rels").decode("utf-8")
-relmap = {}
-for m in re.finditer(r"<Relationship ([^>]*Id=\"([^\"]+)\")[^>]*Target=\"([^\"]*)\"", rels_raw):
-    relmap[m.group(2)] = m.group(3)
-rels_raw2 = z.read("xl/worksheets/_rels/sheet1.xml.rels").decode("utf-8")
 relmap2 = {}
-for el in re.finditer(r"<Relation[^s][^>]*/>", rels_raw2):
+for el in re.finditer(r"<Relationship [^>]*/>", rels_raw):
     e = el.group(0)
-    rid = re.search(r"Id=\"([^\"]+)\"", e)
-    tgt = re.search(r"Target=\"([^\"]*)\"", e)
+    rid = re.search(r"Id="([^"]+)"", e)
+    tgt = re.search(r"Target="([^"]*)"", e)
     if rid and tgt:
         relmap2[rid.group(1)] = tgt.group(1)
 
 j18_rid = hyper.get("J18")
 
-# construire le mapping corrige
 fixes = {}
 for ref, rid in hyper.items():
     tgt = relmap2.get(rid)
@@ -84,7 +71,7 @@ for ref, rid in hyper.items():
     elif tgt.startswith("documents/"):
         base = tgt[len("documents/"):]
         if norm(base) == norm("Manuel Mètre Lazer Bosh 224427088.pdf"):
-            continue  # manuel inexistant -> non requis
+            continue
         m = docs.get(norm(base))
         if m:
             fixes[rid] = "documents/" + m[len("METRO JP 1/documents/"):]
@@ -94,24 +81,24 @@ for ref, rid in hyper.items():
                     fixes[rid] = "documents/" + p[len("METRO JP 1/documents/"):]
 
 def esc(s):
-    return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;")
+    return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
 
 def fix_rel(m):
     el = m.group(0)
-    ridm = re.search(r"Id=\"([^\"]+)\"", el)
+    ridm = re.search(r"Id="([^"]+)"", el)
     if not ridm:
         return el
     rid = ridm.group(1)
     if rid in fixes:
-        el = re.sub(r"Target=\"[^\"]*\"", "Target=\"" + esc(fixes[rid]) + "\"", el)
+        el = re.sub(r"Target="[^"]*"", 'Target="' + esc(fixes[rid]) + '"', el)
     return el
 
-rels_raw3 = re.sub(r"<Relationship [^>]*/>", fix_rel, rels_raw2)
-rels_raw3 = re.sub(r"<Relationship [^>]*Id=\"" + re.escape(j18_rid) + r"[^>]*/>", "", rels_raw3)
+rels_raw3 = re.sub(r"<Relationship [^>]*/>", fix_rel, rels_raw)
+rels_raw3 = re.sub(r"<Relationship [^>]*Id="" + re.escape(j18_rid) + r"[^>]*/>", "", rels_raw3)
 
 sh_raw = z.read("xl/worksheets/sheet1.xml").decode("utf-8")
-sh_raw = re.sub(r"<hyperlink [^>]*ref=\"J18\"[^>]*/>", "", sh_raw)
-sh_raw = re.sub(r"<c r=\"J18\"[^>]*>.*?</c>",
+sh_raw = re.sub(r"<hyperlink [^>]*ref="J18"[^>]*/>", "", sh_raw)
+sh_raw = re.sub(r"<c r="J18"[^>]*>.*?</c>",
                 '<c r="J18" s="5" t="inlineStr"><is><t>non requis</t></is></c>', sh_raw, flags=re.S)
 
 with zipfile.ZipFile(XLSX, "w", zipfile.ZIP_DEFLATED) as zout:
@@ -123,26 +110,27 @@ with zipfile.ZipFile(XLSX, "w", zipfile.ZIP_DEFLATED) as zout:
             data = sh_raw.encode("utf-8")
         zout.writestr(item, data)
 
-# verification
 pathset = set(paths)
 z2 = zipfile.ZipFile(XLSX)
 relsv = ET.fromstring(z2.read("xl/worksheets/_rels/sheet1.xml.rels"))
 relmapv = {r.get("Id"): r.get("Target") for r in relsv}
 shv = ET.fromstring(z2.read("xl/worksheets/sheet1.xml"))
-import urllib.parse
 ok = bad = 0
 for h in shv.iter(M + "hyperlink"):
     tgt = relmapv.get(h.get(R + "id")) or h.get("location")
     full = posixpath.normpath(posixpath.join("METRO JP 1", tgt))
-    full = full.replace("fiches pré-remplies", "fiches pré-remplies")
     if urllib.parse.unquote(full) in pathset or full in pathset:
         ok += 1
     else:
         bad += 1
         print("CASSE:", h.get("ref"), tgt)
 print("liens valides:", ok, "| casses:", bad)
-assert bad == 0
+assert bad == 0, "liens casses restants"
+
 PYEOF
+      - name: Restaurer le classeur d'origine et corriger les liens
+        run: |
+          git show 155ec615c514dfd6cbcdc58dc63714b02c45d18a:"METRO JP 1/Calendrier des étalonnages.xlsx" > /tmp/orig.xlsx
           python3 /tmp/fix.py
       - name: Commit et push
         run: |
