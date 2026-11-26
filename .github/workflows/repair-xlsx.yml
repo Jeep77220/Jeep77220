@@ -1,0 +1,27 @@
+name: Reparer le calendrier (decodage base64)
+
+on:
+  push:
+    branches: [vibe/fiches-fo202-e3dd98]
+    paths: ['repair.txt']
+
+permissions:
+  contents: write
+
+jobs:
+  decode:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Decoder le classeur
+        run: |
+          base64 -d "METRO JP 1/Calendrier des étalonnages.xlsx" > /tmp/calendrier.xlsx
+          cp /tmp/calendrier.xlsx "METRO JP 1/Calendrier des étalonnages.xlsx"
+          file "METRO JP 1/Calendrier des étalonnages.xlsx"
+      - name: Commit et push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "METRO JP 1/Calendrier des étalonnages.xlsx"
+          git commit -m "Calendrier : classeur binaire restaure (liens corriges 65/65)"
+          git push
