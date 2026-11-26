@@ -28,7 +28,6 @@ jobs:
           R = '{http://schemas.openxmlformats.org/officeDocument/2006/relationships}'
           
           paths = subprocess.check_output(["git", "-c", "core.quotepath=false", "ls-tree", "-r", "--name-only", "HEAD"]).decode("utf-8").splitlines()
-          print("chemins:", len(paths))
           
           def norm(s):
               return re.sub(r"\s+", " ", unicodedata.normalize("NFC", s.strip().casefold()))
@@ -41,16 +40,12 @@ jobs:
               parts = rest.split("/", 1)
               if len(parts) == 2:
                   folders.setdefault(parts[0], []).append(parts[1])
-          print("dossiers:", len(folders))
-          for k in sorted(folders):
-              print("DOSSIER:", k, "->", folders[k])
           
           z = zipfile.ZipFile(XLSX)
           shx = ET.fromstring(z.read("xl/worksheets/sheet1.xml"))
           links = {}
           for h in shx.iter(M + "hyperlink"):
               links[h.get("ref")] = h.get(R + "id")
-          print("hyperliens:", len(links))
           rels_raw = z.read("xl/worksheets/_rels/sheet1.xml.rels").decode("utf-8")
           relmap = {}
           for el in re.finditer(r"<Relationship [^>]*/>", rels_raw):
@@ -60,12 +55,15 @@ jobs:
               if rid and tgt:
                   relmap[rid.group(1)] = tgt.group(1)
           
+          # dossier de l'instrument par ligne : priorite a la colonne I, sinon J
           row_folder = {}
-          for ref, rid in links.items():
-              t = relmap.get(rid, '')
-              if t.startswith("documents/") and t.count("/") >= 2:
-                  row_folder[ref[1:]] = t.split("/")[1]
-          print("row_folder:", row_folder)
+          for c in ('I', 'J'):
+              for ref, rid in links.items():
+                  if not ref.startswith(c):
+                      continue
+                  t = relmap.get(rid, '')
+                  if t.startswith("documents/") and t.count("/") >= 2:
+                      row_folder.setdefault(ref[1:], t.split("/")[1])
           
           fixes = {}
           for ref, rid in links.items():
@@ -82,6 +80,7 @@ jobs:
               if found:
                   fixes[rid] = "documents/" + folder + "/" + found
           print("fiches signees reliees:", len(fixes))
+          assert len(fixes) == 17, "attendu 17, obtenu " + str(len(fixes))
           
           def esc(s):
               return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
@@ -124,17 +123,12 @@ jobs:
           assert bad == 0, "liens casses restants"
           shutil.copy(tmp, XLSX)
           PYEOF
-      - name: Diagnostiquer puis pousser si OK
+      - name: Relier les fiches signees et pousser
         run: |
-          set +e
-          python3 /tmp/fix.py >/tmp/diag.txt 2>&1
-          E=$?
-          echo "E=$E" >> /tmp/diag.txt
+          set -e
+          python3 /tmp/fix.py
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          cp /tmp/diag.txt diag.txt
-          git add diag.txt
-          if [ "$E" = "0" ]; then git add "METRO JP 1/Calendrier des étalonnages.xlsx" && git commit -m "Calendrier : fiches de suivi signees reliees" ; else git commit -m "Diagnostic"; fi
-          git push origin HEAD:refs/heads/diag2
-          cat /tmp/diag.txt
-          exit $E
+          git add "METRO JP 1/Calendrier des étalonnages.xlsx"
+          git commit -m "Calendrier : colonne Fiche de suivi reliee aux fiches signees (17/26)"
+          git push origin HEAD:vibe/fiches-fo202-e3dd98
