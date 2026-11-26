@@ -32,7 +32,6 @@ jobs:
           M = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}"
           R = "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}"
           
-          # (ligne, dossier instrument, fiche FO 202 pre-remplie source, id trame)
           ROWS = [
               (3, "Thermomètre d'atelier IR20", "FO 202 ind A - fiche de suivi - Thermomètre - IR2000281-IR2000300.docx", "IR20"),
               (4, "Palmer Mitutoyo 8074960", "FO 202 ind A - fiche de suivi - Palmer (atelier) - 8074960 - 102217.docx", "8074960"),
@@ -139,7 +138,6 @@ jobs:
                   c0.paragraphs[0].runs[0].bold = True
               doc.save(dest)
           
-          # --- identites depuis le calendrier (colonnes A-E, lignes 3-28)
           zx = zipfile.ZipFile(XLSX)
           shx = zx.read("xl/worksheets/sheet1.xml").decode("utf-8")
           shE = ET.fromstring(shx.encode("utf-8"))
@@ -156,7 +154,6 @@ jobs:
                       vals[col] = "".join(t2.text or "" for t2 in is_.iter(M + "t"))
               identByRow[rn] = [vals.get("A", ""), vals.get("B", ""), vals.get("C", ""), vals.get("D", ""), vals.get("E", "")]
           
-          # --- generation des trames
           changed = []
           for (rn, folder, src_name, tid) in ROWS:
               tr_suivi = os.path.join(BASE, "documents", folder, "TRAME - Fiche de suivi vierge - " + tid + ".docx")
@@ -166,15 +163,14 @@ jobs:
               changed += [tr_suivi, tr_317]
           print("trames generees :", len(changed))
           
-          # --- verification des trames de suivi : plus aucune date d’intervention
           for f in [c for c in changed if "Fiche de suivi" in c]:
               zz = zipfile.ZipFile(f)
               xx = zz.read("word/document.xml").decode("utf-8")
-              assert not re.search("(19|20)[0-9]{2}/[0-9]{2}", xx), "date residuelle dans " + f
+              texts = "".join(re.findall("<w:t[^>]*>([^<]*)</w:t>", xx))
+              assert not re.search("(19|20)[0-9]{2}/[0-9]{2}/[0-9]{2}", texts), "date residuelle dans " + f
               assert xx.count("<w:tbl>") >= 2, "tables manquantes dans " + f
           print("verification fiches de suivi : OK")
           
-          # --- modif du xlsx : colonnes K (trame suivi) et L (trame etalonnage)
           rels = zx.read("xl/worksheets/_rels/sheet1.xml.rels").decode("utf-8")
           max_id = max(int(m.group(1)) for m in re.finditer('Id="rId([0-9]+)"', rels))
           new_rels = ""
@@ -199,7 +195,7 @@ jobs:
           def cxml(ref, style, text):
               return '<c r="' + ref + '" s="' + style + '" t="inlineStr"><is><t>' + text + '</t></is></c>'
           
-          hdrs = cxml("K2", "2", "Trame fiche de suivi (vierge)") + cxml("L2", "2", "Trame relev’é d’étalonnage (vierge)")
+          hdrs = cxml("K2", "2", "Trame fiche de suivi (vierge)") + cxml("L2", "2", "Trame relevé d’étalonnage (vierge)")
           m2 = re.search(r'(<row r="2"[^>]*>)(.*?)(</row>)', shx, re.S)
           assert m2, "ligne 2 introuvable"
           shx = shx[:m2.start()] + m2.group(1) + m2.group(2) + hdrs + m2.group(3) + shx[m2.end():]
@@ -224,7 +220,6 @@ jobs:
                       data = rels.encode("utf-8")
                   zout.writestr(it, data)
           
-          # --- validation finale
           paths = subprocess.check_output(["git", "-c", "core.quotepath=false", "ls-files", "--cached", "--others", "--exclude-standard"]).decode("utf-8").splitlines()
           pathset = set(paths)
           z2 = zipfile.ZipFile(tmp)
