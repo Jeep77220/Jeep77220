@@ -1,1 +1,5 @@
-numFmt date corrige : OK
+Traceback (most recent call last):
+  File "/tmp/fix.py", line 8, in <module>
+    assert OLD in stx, "numFmts vide introuvable"
+           ^^^^^^^^^^
+AssertionError: numFmts vide introuvable
