@@ -1,0 +1,109 @@
+name: Ajouter le manuel IR20
+
+on:
+  push:
+    branches: [vibe/fiches-fo202-e3dd98]
+    paths: ['repair.txt']
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Ecrire le script
+        run: |
+          cat > /tmp/fix.py << 'PYEOF'
+          import hashlib, posixpath, re, subprocess, urllib.parse
+          import xml.etree.ElementTree as ET
+          import zipfile
+          
+          XLSX = "METRO JP 1/Calendrier des étalonnages.xlsx"
+          PDF = "METRO JP 1/documents/Thermomètre d'atelier IR20/Manuel Thermomètre d'atelier IR20.pdf"
+          TARGET = "documents/Thermomètre d'atelier IR20/Manuel Thermomètre d'atelier IR20.pdf"
+          MD5 = "be2c289af3790110f91163f4ff481541"
+          M = '{http://schemas.openxmlformats.org/spreadsheetml/2006/main}'
+          R = '{http://schemas.openxmlformats.org/officeDocument/2006/relationships}'
+          
+          # 1. verifier le PDF telecharge
+          h = hashlib.md5(open(PDF, "rb").read()).hexdigest()
+          print("md5:", h)
+          assert h == MD5, "PDF telecharge corrompu"
+          
+          # 2. modifier le classeur : J3 passe de non requis a un lien vers le manuel
+          z = zipfile.ZipFile(XLSX)
+          sh_raw = z.read("xl/worksheets/sheet1.xml").decode("utf-8")
+          rels_raw = z.read("xl/worksheets/_rels/sheet1.xml.rels").decode("utf-8")
+          
+          # style d'une cellule manuel existante (J4)
+          mstyle = re.search(r'<c r="J4" s="(d+)"', sh_raw)
+          style_j4 = mstyle.group(1)
+          print("style J4:", style_j4)
+          
+          # remplacer la cellule J3
+          cell_new = '<c r="J3" s="' + style_j4 + '" t="inlineStr"><is><t>Manuel Thermomètre d atelier IR20</t></is></c>'
+          sh_raw2 = re.sub(r'<c r="J3"[^>]*>.*?</c>', cell_new.replace("\\", "\\") if False else '<c r="J3" s="' + style_j4 + '" t="inlineStr"><is><t>Manuel Thermomètre IR20</t></is></c>', sh_raw, count=1, flags=re.S)
+          assert 'Manuel Thermomètre IR20' in sh_raw2
+          
+          # nouvel id de relation
+          ids = [int(m.group(1)) for m in re.finditer(r'Id="rId(\d+)"', rels_raw)]
+          new_id = "rId" + str(max(ids) + 1)
+          rel_entry = '<Relationship Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink" Target="' + TARGET.replace("&", "&amp;").replace('"', "&quot;") + '" TargetMode="External" Id="' + new_id + '"/>'
+          rels_raw2 = rels_raw.replace("</Relationships>", rel_entry + "</Relationships>")
+          
+          # element hyperlink pour J3
+          hl = '<hyperlink ref="J3" r:id="' + new_id + '"/>'
+          if "<hyperlinks>" in sh_raw2:
+              sh_raw2 = sh_raw2.replace("</hyperlinks>", hl + "</hyperlinks>", 1)
+          else:
+              sh_raw2 = sh_raw2.replace("</worksheet>", "<hyperlinks>" + hl + "</hyperlinks></worksheet>")
+          assert 'ref="J3"' in sh_raw2.split("</hyperlinks>")[0]
+          
+          tmp = "/tmp/fixed.xlsx"
+          with zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as zout:
+              for item in z.infolist():
+                  data = z.read(item.filename)
+                  if item.filename == "xl/worksheets/sheet1.xml":
+                      data = sh_raw2.encode("utf-8")
+                  elif item.filename == "xl/worksheets/_rels/sheet1.xml.rels":
+                      data = rels_raw2.encode("utf-8")
+                  zout.writestr(item, data)
+          
+          # 3. verification complete des liens
+          paths = subprocess.check_output(["git", "-c", "core.quotepath=false", "ls-tree", "-r", "--name-only", "HEAD"]).decode("utf-8").splitlines()
+          paths.append(PDF)
+          pathset = set(paths)
+          z2 = zipfile.ZipFile(tmp)
+          relsv = ET.fromstring(z2.read("xl/worksheets/_rels/sheet1.xml.rels"))
+          relmapv = {r.get("Id"): r.get("Target") for r in relsv}
+          shv = ET.fromstring(z2.read("xl/worksheets/sheet1.xml"))
+          ok = bad = 0
+          for h in shv.iter(M + "hyperlink"):
+              tgt = relmapv.get(h.get(R + "id")) or h.get("location")
+              full = posixpath.normpath(posixpath.join("METRO JP 1", tgt))
+              if urllib.parse.unquote(full) in pathset or full in pathset:
+                  ok += 1
+              else:
+                  bad += 1
+                  print("CASSE:", h.get("ref"), tgt)
+          print("liens valides:", ok, "| casses:", bad)
+          assert bad == 0, "liens casses"
+          assert ok == 66, "attendu 66 liens, obtenu " + str(ok)
+          import shutil
+          shutil.copy(tmp, XLSX)
+          PYEOF
+      - name: Telecharger le manuel, relier J3 et pousser
+        run: |
+          set -e
+          curl -sL --max-time 120 -o "METRO JP 1/documents/Thermomètre d'atelier IR20/Manuel Thermomètre d'atelier IR20.pdf" "https://tmpfiles.org/dl/1795691633.babc5588f0b816a5/wGA4axEn3QM1/manuel_ir20.pdf"
+          file "METRO JP 1/documents/Thermomètre d'atelier IR20/Manuel Thermomètre d'atelier IR20.pdf"
+          python3 /tmp/fix.py
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "METRO JP 1/documents/Thermomètre d'atelier IR20/Manuel Thermomètre d'atelier IR20.pdf" "METRO JP 1/Calendrier des étalonnages.xlsx"
+          git commit -m "Manuel Thermometre IR20 : ajout et lien dans le calendrier (66/66 valides)"
+          git push origin HEAD:vibe/fiches-fo202-e3dd98
