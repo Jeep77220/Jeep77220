@@ -1,4 +1,4 @@
-name: Dates automatiques colonne G
+name: Correction format date
 
 on:
   push:
@@ -18,120 +18,30 @@ jobs:
       - name: Ecrire le script
         run: |
           cat > /tmp/fix.py << 'PYEOF'
-          import re, shutil, subprocess, sys, zipfile
-          import xml.etree.ElementTree as ET
-          from datetime import date
-          
+          import re, shutil, zipfile
           XLSX = "METRO JP 1/Calendrier des étalonnages.xlsx"
-          M = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}"
-          
           zx = zipfile.ZipFile(XLSX)
-          shx = zx.read("xl/worksheets/sheet1.xml").decode("utf-8")
           stx = zx.read("xl/styles.xml").decode("utf-8")
-          
-          # --- nouveau style de date : clone du style s=3 (celui des colonnes A-G) + format date
-          mcs = re.search(r"<cellXfs[^>]*>(.*?)</cellXfs>", stx, re.S)
-          assert mcs, "cellXfs introuvable"
-          xfs = re.findall(r"<xf [^>]*?(?:/>|>.*?</xf>)", mcs.group(1), re.S)
-          assert len(xfs) >= 4, "xf attendus manquants"
-          xf3 = xfs[3]
-          assert 'borderId="1"' in xf3, "le xf 3 n'a pas de bordure"
-          date_xf = xf3.replace('numFmtId="0"', 'numFmtId="164" applyNumberFormat="1"')
-          new_idx = len(xfs)
-          stx = stx.replace("<cellXfs", '<numFmts count="1"><numFmt formatCode="DD/MM/YYYY" numFmtId="164"/></numFmts><cellXfs', 1) if "<numFmts" not in stx else stx
-          cnt = int(re.search(r'<cellXfs count="([0-9]+)"', stx).group(1))
-          stx = stx.replace("</cellXfs>", date_xf + "</cellXfs>")
-          stx = re.sub(r'(<cellXfs count=")[0-9]+(")', lambda m: m.group(1) + str(cnt + 1) + m.group(2), stx, count=1)
-          print("nouveau style date : s =", new_idx)
-          
-          def add_months(d, m):
-              y = d.year + (d.month - 1 + m) // 12
-              mo = (d.month - 1 + m) % 12 + 1
-              last = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
-              if (y % 4 == 0 and y % 100 != 0) or y % 400 == 0:
-                  last[1] = 29
-              return date(y, mo, min(d.day, last[mo - 1]))
-          
-          def serial(d):
-              return (d - date(1899, 12, 30)).days
-          
-          shE = ET.fromstring(shx.encode("utf-8"))
-          vals = {}
-          for row in shE.iter(M + "row"):
-              rn = int(row.get("r"))
-              if rn < 3 or rn > 28:
-                  continue
-              for c in row:
-                  col = re.match("[A-Z]+", c.get("r")).group(0)
-                  is_ = c.find(M + "is")
-                  if is_ is not None:
-                      vals[(rn, col)] = "".join(t.text or "" for t in is_.iter(M + "t"))
-          
-          REPL = []
-          for rn in range(3, 29):
-              e_txt = vals.get((rn, "E"), "").strip()
-              f_txt = vals.get((rn, "F"), "").strip()
-              me = re.fullmatch("([0-9]+) mois?", e_txt)
-              mf = re.fullmatch("([0-9]{1,2})/([0-9]{1,2})/([0-9]{4})", f_txt)
-              assert me and mf, "ligne " + str(rn) + " : E/F illisibles (" + e_txt + " / " + f_txt + ")"
-              mois = int(me.group(1))
-              dlast = date(int(mf.group(3)), int(mf.group(2)), int(mf.group(1)))
-              dval = add_months(dlast, mois)
-              ref = "F" + str(rn)
-              refg = "G" + str(rn)
-              cf = '<c r="' + ref + '" s="' + str(new_idx) + '"><v>' + str(serial(dlast)) + "</v></c>"
-              cg = '<c r="' + refg + '" s="' + str(new_idx) + '"><f>EDATE(' + ref + ',VALUE(SUBSTITUTE(E' + str(rn) + '," mois","")))</f><v>' + str(serial(dval)) + "</v></c>"
-              REPL.append((rn, ref, cf, refg, cg, dlast, dval))
-          print("26 lignes preparees :", len(REPL))
-          
-          for (rn, ref, cf, refg, cg, dlast, dval) in REPL:
-              patf = re.compile(r'<c r="F' + str(rn) + r'"[^>]*>.*?</c>', re.S)
-              patg = re.compile(r'<c r="G' + str(rn) + r'"[^>]*>.*?</c>', re.S)
-              m1 = patf.search(shx)
-              m2 = patg.search(shx)
-              assert m1 and m2, "cellules F/G introuvables ligne " + str(rn)
-              shx = shx[:m1.start()] + cf + shx[m1.end():]
-              m2 = patg.search(shx)
-              shx = shx[:m2.start()] + cg + shx[m2.end():]
-          
+          assert 'numFmtId="164"' in stx, "style date absent"
+          OLD = '<numFmts count="0" />'
+          NEW = '<numFmts count="1"><numFmt formatCode="DD/MM/YYYY" numFmtId="164" /></numFmts>'
+          assert OLD in stx, "numFmts vide introuvable"
+          stx2 = stx.replace(OLD, NEW, 1)
+          assert 'DD/MM/YYYY' in stx2
           tmp = "/tmp/fixed.xlsx"
           with zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as zout:
               for it in zx.infolist():
                   data = zx.read(it.filename)
-                  if it.filename == "xl/worksheets/sheet1.xml":
-                      data = shx.encode("utf-8")
-                  elif it.filename == "xl/styles.xml":
-                      data = stx.encode("utf-8")
+                  if it.filename == "xl/styles.xml":
+                      data = stx2.encode("utf-8")
                   zout.writestr(it, data)
-          
-          # --- validation
+          import xml.etree.ElementTree as ET
           z2 = zipfile.ZipFile(tmp)
-          ET.fromstring(z2.read("xl/worksheets/sheet1.xml"))
           ET.fromstring(z2.read("xl/styles.xml"))
-          shv = ET.fromstring(z2.read("xl/worksheets/sheet1.xml"))
-          nv = nf = 0
-          for c in shv.iter(M + "c"):
-              r = c.get("r")
-              if r and r[0] == "F" and 3 <= int(r[1:]) <= 28:
-                  assert c.find(M + "v") is not None and c.get("t") is None, "F attendu numerique : " + r
-                  nv += 1
-              if r and r[0] == "G" and 3 <= int(r[1:]) <= 28:
-                  assert c.find(M + "f") is not None, "G attendu avec formule : " + r
-                  assert "EDATE(" in c.find(M + "f").text, "mauvaise formule en " + r
-                  nf += 1
-          assert nv == 26 and nf == 26, "attendu 26+26, obtenu " + str(nv) + "+" + str(nf)
-          nb_links = len(list(shv.iter(M + "hyperlink")))
-          assert nb_links == 118, "hyperliens : " + str(nb_links)
-          print("cellules date :", nv, "| formules EDATE :", nf, "| hyperliens intacts :", nb_links)
-          
-          # --- coherence des validites calculees vs ancien texte G
-          for (rn, ref, cf, refg, cg, dlast, dval) in REPL:
-              old = vals.get((rn, "G"), "")
-              print(str(rn).rjust(2), "F =", dlast.isoformat(), "-> G calculee =", dval.isoformat(), "| ancien G : " + old)
+          print("numFmt date corrige : OK")
           shutil.copy(tmp, XLSX)
-          print("XLSX mis a jour : F = dates, G = EDATE(periodicite)")
           PYEOF
-      - name: Diagnostiquer et publier
+      - name: Corriger et publier
         run: |
           set +e
           python3 /tmp/fix.py > /tmp/diag.txt 2>&1
@@ -141,11 +51,11 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           cp /tmp/diag.txt diag.txt
           git add diag.txt
-          git commit -m "Diagnostic dates auto"
+          git commit -m "Diagnostic numFmt"
           git push origin HEAD:refs/heads/diag2 --force
           if [ "$E" = "0" ]; then
             git add "METRO JP 1/Calendrier des étalonnages.xlsx"
-            git commit --amend -m "Calendrier : date de validite (G) calculee automatiquement depuis F + periodicite (EDATE)"
+            git commit --amend -m "Calendrier : ajout du format de date JJ/MM/AAAA pour colonnes F et G"
             git push origin HEAD:vibe/fiches-fo202-e3dd98
           fi
           exit $E
